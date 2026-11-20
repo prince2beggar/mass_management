@@ -1,0 +1,13 @@
+{
+  email admin@messmate.com
+}
+
+# Main SaaS landing & wildcard tenant subdomains
+messmate.com, *.messmate.com {
+  reverse_proxy web:3000 {
+    header_up Host {host}
+    header_up X-Real-IP {remote}
+    header_up X-Forwarded-For {remote}
+    header_up X-Forwarded-Proto {scheme}
+  }
+}
