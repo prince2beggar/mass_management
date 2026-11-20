@@ -112,16 +112,12 @@ export default function MealsPage() {
   };
 
   const toggleAllOff = (id: string) => {
+    const member = membersMeals.find((m) => m.id === id);
+    if (!member) return;
+    const nextState = !member.isOff;
     setMembersMeals((prev) =>
       prev.map((m) => {
         if (m.id === id) {
-          const nextState = !m.isOff;
-          showToast(
-            nextState
-              ? `All meals turned OFF for ${m.name}`
-              : `Meals restored for ${m.name}`,
-            "info"
-          );
           return {
             ...m,
             isOff: nextState,
@@ -132,6 +128,12 @@ export default function MealsPage() {
         }
         return m;
       })
+    );
+    showToast(
+      nextState
+        ? `All meals turned OFF for ${member.name}`
+        : `Meals restored for ${member.name}`,
+      "info"
     );
   };
 

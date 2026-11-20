@@ -41,17 +41,15 @@ export default function DashboardPage() {
   const [trxId, setTrxId] = useState("");
 
   const toggleMeal = (type: "breakfast" | "lunch" | "dinner") => {
-    setMeals((prev) => {
-      const current = prev[type];
-      const nextVal = current > 0 ? 0 : 1;
-      showToast(
-        nextVal > 0
-          ? `${type.toUpperCase()} turned ON for today.`
-          : `${type.toUpperCase()} turned OFF for today.`,
-        "success"
-      );
-      return { ...prev, [type]: nextVal };
-    });
+    const current = meals[type];
+    const nextVal = current > 0 ? 0 : 1;
+    setMeals((prev) => ({ ...prev, [type]: nextVal }));
+    showToast(
+      nextVal > 0
+        ? `${type.toUpperCase()} turned ON for today.`
+        : `${type.toUpperCase()} turned OFF for today.`,
+      "success"
+    );
   };
 
   const handlePaymentSubmit = (e: React.FormEvent) => {
