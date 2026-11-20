@@ -175,6 +175,18 @@ export const translations = {
       rule4: "Turn off lights, fans, and water taps when not in use.",
       rule5: "Monthly rent and meal advance must be cleared by the 7th of every month.",
     },
+    reports: {
+      title: "Reports, Statements & Exports",
+      subtitle: "Management insights, meal consumption trends, and CSV/Excel exports.",
+      exportBazar: "Export Bazar Ledger (CSV)",
+      exportMeals: "Export Meal Sheet (CSV)",
+      exportFinance: "Export Dues Summary (CSV)",
+      monthlyStatement: "Member Monthly Statement",
+      printStatement: "Print / Save PDF",
+      collectionRate: "Rent Collection Rate",
+      totalExpenseMonth: "Total Operational Cost",
+      avgDailyMeals: "Daily Average Meals",
+    },
   },
   bn: {
     common: {
@@ -350,6 +362,18 @@ export const translations = {
       rule4: "রুম ত্যাগের সময় লাইট, ফ্যান ও পানির কল বন্ধ নিশ্চিত করুন।",
       rule5: "প্রতি মাসের ৭ তারিখের মধ্যে মাসিক সিট ভাড়া ও মিলের অগ্রিম টাকা পরিশোধ করতে হবে।",
     },
+    reports: {
+      title: "প্রতিবেদন, স্টেটমেন্ট ও এক্সপোর্ট",
+      subtitle: "বিশ্লেষণমূলক তথ্য, মিলের পরিসংখ্যান এবং সিএসভি/এক্সেল ডাউনলোড।",
+      exportBazar: "বাজারের খতিয়ান ডাউনলোড (CSV)",
+      exportMeals: "মিলের হাজিরা শীট ডাউনলোড (CSV)",
+      exportFinance: "বকেয়া হিসাব সারাংশ (CSV)",
+      monthlyStatement: "সদস্যের মাসিক হিসাব বিবরণী",
+      printStatement: "প্রিন্ট / পিডিএফ সংরক্ষণ",
+      collectionRate: "ভাড়া আদায়ের হার",
+      totalExpenseMonth: "চলতি মাসের মোট খরচ",
+      avgDailyMeals: "দৈনিক গড় মিল",
+    },
   },
 };
 
@@ -364,6 +388,7 @@ export type TranslationSchema = {
   rentals: Record<string, string>;
   emergency: Record<string, string>;
   notices: Record<string, string>;
+  reports: Record<string, string>;
 };
 
 export function getTranslation(locale: Locale): typeof translations.en {

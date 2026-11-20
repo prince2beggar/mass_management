@@ -21,6 +21,7 @@ import {
   Home,
   LayoutDashboard,
   KeyRound,
+  BarChart3,
 } from "lucide-react";
 
 export default function Header() {
@@ -35,6 +36,7 @@ export default function Header() {
     { href: "/bazar", label: t.nav.bazar, icon: ShoppingCart },
     { href: "/finance", label: t.nav.finance, icon: CreditCard },
     { href: "/rooms", label: t.nav.rooms, icon: Building },
+    { href: "/reports", label: "Reports", icon: BarChart3 },
     { href: "/emergency", label: t.nav.emergency, icon: PhoneCall },
     { href: "/notices", label: t.nav.notices, icon: Bell },
   ];

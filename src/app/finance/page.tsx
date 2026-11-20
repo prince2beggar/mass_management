@@ -248,7 +248,7 @@ export default function FinancePage() {
                 </div>
               </div>
 
-              <div className="pt-2 flex gap-2">
+              <div className="pt-2 flex flex-col gap-2">
                 {inv.dueAmount > 0 ? (
                   <button
                     onClick={() => handlePayInvoice(inv)}
@@ -261,6 +261,12 @@ export default function FinancePage() {
                     ✓ Invoice Fully Settled
                   </div>
                 )}
+                <a
+                  href="/reports"
+                  className="w-full py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-center font-semibold text-xs transition"
+                >
+                  Print / Download PDF Statement →
+                </a>
               </div>
             </div>
           ))}
