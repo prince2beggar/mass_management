@@ -48,6 +48,7 @@ interface AppContextType {
     roomNumber: string;
     institution: string;
   }) => Promise<boolean>;
+  updateMemberRole: (memberId: string, newRole: UserRole) => Promise<boolean>;
   t: (typeof translations)["en"];
   themeColor: string;
   setThemeColor: (color: string) => void;
@@ -272,6 +273,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateMemberRole = async (memberId: string, newRole: UserRole): Promise<boolean> => {
+    try {
+      // Sync with backend API
+      await fetch("/api/members", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: memberId, role: newRole }),
+      });
+
+      // Update members state
+      setMembers((prev) =>
+        prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
+      );
+
+      // If updating the currently logged-in persona, update currentUser and active role
+      const targetMember = members.find((m) => m.id === memberId);
+      if (
+        currentUser &&
+        targetMember &&
+        (currentUser.email === targetMember.email || currentUser.name === targetMember.name)
+      ) {
+        setCurrentUser((prev) => (prev ? { ...prev, role: newRole } : null));
+        setRoleState(newRole);
+      }
+
+      showToast(
+        locale === "bn"
+          ? `${targetMember?.name || "সদস্য"}-এর মেসের পদবী/রোল পরিবর্তন করে "${newRole}" করা হয়েছে!`
+          : `Role for ${targetMember?.name || "Member"} updated to ${newRole}!`,
+        "success"
+      );
+      return true;
+    } catch (err) {
+      console.error("updateMemberRole error:", err);
+      showToast(
+        locale === "bn" ? "রোল আপডেট করতে সমস্যা হয়েছে" : "Failed to update role",
+        "error"
+      );
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedLocale = localStorage.getItem("messmate_locale") as Locale | null;
@@ -304,6 +347,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         members,
         alumni,
         addMember,
+        updateMemberRole,
         t,
         themeColor,
         setThemeColor,

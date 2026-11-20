@@ -23,10 +23,13 @@ import {
   Mail,
   Home,
   Briefcase,
+  Edit3,
+  UserCheck,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function AdminPage() {
-  const { t, role, members, addMember, showToast } = useApp();
+  const { t, role, members, addMember, updateMemberRole, showToast } = useApp();
 
   const [activeTab, setActiveTab] = useState<"SETTINGS" | "MEMBERS" | "APPROVALS" | "CLOSING">("MEMBERS");
 
@@ -38,6 +41,12 @@ export default function AdminPage() {
   const [memberRole, setMemberRole] = useState<UserRole>("MEMBER");
   const [memberRoom, setMemberRoom] = useState("102");
   const [memberInstitution, setMemberInstitution] = useState("Dhaka University");
+
+  // Role Edit Modal State
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<(typeof members)[0] | null>(null);
+  const [selectedNewRole, setSelectedNewRole] = useState<UserRole>("MEMBER");
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   // Mess Settings State
   const [messName, setMessName] = useState("Green View Student Mess");
@@ -94,6 +103,26 @@ export default function AdminPage() {
   const handleApprove = (id: string, title: string) => {
     setPendingApprovals((prev) => prev.filter((a) => a.id !== id));
     showToast(`Approved: ${title}! Added to ledger.`, "success");
+  };
+
+  const handleOpenRoleModal = (member: (typeof members)[0]) => {
+    setEditingMember(member);
+    setSelectedNewRole(member.role);
+    setRoleModalOpen(true);
+  };
+
+  const handleSaveRole = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    setIsUpdatingRole(true);
+    await updateMemberRole(editingMember.id, selectedNewRole);
+    setIsUpdatingRole(false);
+    setRoleModalOpen(false);
+    setEditingMember(null);
+  };
+
+  const handleInlineRoleChange = async (memberId: string, newRole: UserRole) => {
+    await updateMemberRole(memberId, newRole);
   };
 
   const handleSaveSettings = (e: React.FormEvent) => {
@@ -174,35 +203,53 @@ export default function AdminPage() {
                   <th className="py-3 px-3">Email</th>
                   <th className="py-3 px-3">Assigned Room</th>
                   <th className="py-3 px-3">Institution / Job</th>
-                  <th className="py-3 px-3">Role</th>
-                  <th className="py-3 px-4 text-center">Status</th>
+                  <th className="py-3 px-3">Role / পদবী</th>
+                  <th className="py-3 px-3 text-center">Status</th>
+                  <th className="py-3 px-4 text-right">Actions (রোল এডিট)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {members.map((m) => (
-                  <tr key={m.id} className="hover:bg-slate-50/50">
+                  <tr key={m.id} className="hover:bg-slate-50/50 transition">
                     <td className="py-3.5 px-4 font-bold text-slate-900">{m.name}</td>
                     <td className="py-3.5 px-3 font-mono text-slate-700">{m.phone}</td>
                     <td className="py-3.5 px-3 font-mono text-slate-500">{m.email}</td>
                     <td className="py-3.5 px-3 font-semibold text-indigo-700">{m.room}</td>
                     <td className="py-3.5 px-3 text-slate-600">{m.institution}</td>
                     <td className="py-3.5 px-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      <select
+                        value={m.role}
+                        onChange={(e) => handleInlineRoleChange(m.id, e.target.value as UserRole)}
+                        className={`text-[11px] font-bold rounded-lg border px-2 py-1 transition cursor-pointer shadow-2xs outline-none ${
                           m.role === "OWNER"
-                            ? "bg-emerald-100 text-emerald-800"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-300 focus:ring-1 focus:ring-emerald-500"
                             : m.role === "MEAL_MANAGER"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-indigo-100 text-indigo-800"
+                            ? "bg-amber-50 text-amber-800 border-amber-300 focus:ring-1 focus:ring-amber-500"
+                            : m.role === "SUPER_ADMIN"
+                            ? "bg-purple-50 text-purple-800 border-purple-300 focus:ring-1 focus:ring-purple-500"
+                            : "bg-indigo-50 text-indigo-800 border-indigo-200 focus:ring-1 focus:ring-indigo-500"
                         }`}
+                        title="Click to change member role"
                       >
-                        {m.role}
-                      </span>
+                        <option value="MEMBER">MEMBER (মেম্বার)</option>
+                        <option value="MEAL_MANAGER">MEAL_MANAGER (মিল ম্যানেজার)</option>
+                        <option value="OWNER">OWNER (মেস মালিক)</option>
+                        <option value="SUPER_ADMIN">SUPER_ADMIN (সুপার এডমিন)</option>
+                      </select>
                     </td>
-                    <td className="py-3.5 px-4 text-center">
+                    <td className="py-3.5 px-3 text-center">
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                         {m.status}
                       </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={() => handleOpenRoleModal(m)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-semibold text-[11px] border border-slate-200 transition"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Edit Role (রোল এডিট)</span>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -490,6 +537,191 @@ export default function AdminPage() {
                   className="w-1/2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm transition"
                 >
                   মেম্বার প্রোফাইল তৈরি করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Role Edit Modal */}
+      {roleModalOpen && editingMember && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    মেম্বার রোল ও দায়িত্ব পরিবর্তন (Edit Role)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    নির্দিষ্ট মেম্বারের পারমিশন এবং দায়িত্ব পরিবর্তন করুন
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRoleModalOpen(false)}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Member Info Pill */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-slate-900 text-sm">{editingMember.name}</h4>
+                <p className="text-xs text-slate-500">{editingMember.email} • {editingMember.room}</p>
+              </div>
+              <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800">
+                বর্তমান: {editingMember.role}
+              </span>
+            </div>
+
+            <form onSubmit={handleSaveRole} className="space-y-4">
+              <div className="space-y-2.5">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  নতুন পদবী / রোল নির্বাচন করুন:
+                </label>
+
+                {/* Option 1: MEMBER */}
+                <label
+                  onClick={() => setSelectedNewRole("MEMBER")}
+                  className={`block p-3 rounded-2xl border cursor-pointer transition ${
+                    selectedNewRole === "MEMBER"
+                      ? "border-indigo-600 bg-indigo-50/50 shadow-xs ring-1 ring-indigo-500"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-xs">MEMBER (সাধারণ সদস্য)</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700">Resident</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        নিজের মিল অন/অফ করতে পারবে, সার্বিক মিল-বাজারের লাইভ ব্যালেন্স দেখতে পারবে, নিজের বাসা ভাড়ার ইনভয়েস দেখতে ও পরিশোধ করতে পারবে।
+                      </p>
+                    </div>
+                    <input
+                      type="radio"
+                      name="roleOption"
+                      checked={selectedNewRole === "MEMBER"}
+                      onChange={() => setSelectedNewRole("MEMBER")}
+                      className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </div>
+                </label>
+
+                {/* Option 2: MEAL_MANAGER */}
+                <label
+                  onClick={() => setSelectedNewRole("MEAL_MANAGER")}
+                  className={`block p-3 rounded-2xl border cursor-pointer transition ${
+                    selectedNewRole === "MEAL_MANAGER"
+                      ? "border-amber-600 bg-amber-50/50 shadow-xs ring-1 ring-amber-500"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-xs">MEAL_MANAGER (মিল ও বাজার ম্যানেজার)</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Monthly Manager</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        চলতি মাসের দায়িত্বপ্রাপ্ত ম্যানেজার। সবার মিল এন্ট্রি পরিবর্তন করতে পারবে, প্রতিদিনের বাজার খরচ যুক্ত করতে পারবে এবং মিল কাট-অফ সময় নিয়ন্ত্রণ করতে পারবে।
+                      </p>
+                    </div>
+                    <input
+                      type="radio"
+                      name="roleOption"
+                      checked={selectedNewRole === "MEAL_MANAGER"}
+                      onChange={() => setSelectedNewRole("MEAL_MANAGER")}
+                      className="mt-1 text-amber-600 focus:ring-amber-500"
+                    />
+                  </div>
+                </label>
+
+                {/* Option 3: OWNER */}
+                <label
+                  onClick={() => setSelectedNewRole("OWNER")}
+                  className={`block p-3 rounded-2xl border cursor-pointer transition ${
+                    selectedNewRole === "OWNER"
+                      ? "border-emerald-600 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-500"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-xs">OWNER (মেস মালিক / বাড়িওয়ালা)</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Full Access</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        সম্পূর্ণ মেস নিয়ন্ত্রণ: নতুন সদস্য অ্যাড করা, রোল এডিট করা, ভাড়া ও ইউটিলিটি বিল এডিট করা এবং মাস শেষ ক্লোজিং অনুমোদন করা।
+                      </p>
+                    </div>
+                    <input
+                      type="radio"
+                      name="roleOption"
+                      checked={selectedNewRole === "OWNER"}
+                      onChange={() => setSelectedNewRole("OWNER")}
+                      className="mt-1 text-emerald-600 focus:ring-emerald-500"
+                    />
+                  </div>
+                </label>
+
+                {/* Option 4: SUPER_ADMIN */}
+                <label
+                  onClick={() => setSelectedNewRole("SUPER_ADMIN")}
+                  className={`block p-3 rounded-2xl border cursor-pointer transition ${
+                    selectedNewRole === "SUPER_ADMIN"
+                      ? "border-purple-600 bg-purple-50/50 shadow-xs ring-1 ring-purple-500"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-xs">SUPER_ADMIN (সুপার এডমিন)</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">System Root</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        প্ল্যাটফর্মের সর্বোচ্চ লেভেল অ্যাক্সেস ও কনফিগারেশন।
+                      </p>
+                    </div>
+                    <input
+                      type="radio"
+                      name="roleOption"
+                      checked={selectedNewRole === "SUPER_ADMIN"}
+                      onChange={() => setSelectedNewRole("SUPER_ADMIN")}
+                      className="mt-1 text-purple-600 focus:ring-purple-500"
+                    />
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setRoleModalOpen(false)}
+                  className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdatingRole}
+                  className="w-1/2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5"
+                >
+                  {isUpdatingRole ? (
+                    <span>সংরক্ষণ হচ্ছে...</span>
+                  ) : (
+                    <span>রোল পরিবর্তন সংরক্ষণ করুন</span>
+                  )}
                 </button>
               </div>
             </form>
