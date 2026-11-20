@@ -22,6 +22,7 @@ import {
   LayoutDashboard,
   KeyRound,
   BarChart3,
+  Activity,
 } from "lucide-react";
 
 export default function Header() {
@@ -163,6 +164,15 @@ export default function Header() {
                   <span>{t.nav.adminPortal}</span>
                 </Link>
               )}
+              {(role === "SUPER_ADMIN" || role === "OWNER") && (
+                <Link
+                  href="/operations"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95"
+                >
+                  <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Ops Center</span>
+                </Link>
+              )}
               {role === "SUPER_ADMIN" && (
                 <Link
                   href="/super-admin"
@@ -218,6 +228,16 @@ export default function Header() {
                 <Shield className="w-4 h-4" />
                 <span>{t.nav.adminPortal}</span>
               </Link>
+              {(role === "SUPER_ADMIN" || role === "OWNER") && (
+                <Link
+                  href="/operations"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-slate-800 text-slate-200 text-sm font-semibold border border-slate-700"
+                >
+                  <Activity className="w-4 h-4 text-emerald-400" />
+                  <span>Operations Center</span>
+                </Link>
+              )}
             </div>
           </div>
         )}
