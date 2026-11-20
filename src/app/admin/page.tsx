@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useApp } from "@/context/AppContext";
+import { useApp, UserRole } from "@/context/AppContext";
 import {
   Shield,
   Settings,
@@ -18,12 +18,26 @@ import {
   AlertOctagon,
   ChevronRight,
   UserPlus,
+  X,
+  Phone,
+  Mail,
+  Home,
+  Briefcase,
 } from "lucide-react";
 
 export default function AdminPage() {
-  const { t, role, showToast } = useApp();
+  const { t, role, members, addMember, showToast } = useApp();
 
-  const [activeTab, setActiveTab] = useState<"SETTINGS" | "MEMBERS" | "APPROVALS" | "CLOSING" | "AUDIT">("SETTINGS");
+  const [activeTab, setActiveTab] = useState<"SETTINGS" | "MEMBERS" | "APPROVALS" | "CLOSING">("MEMBERS");
+
+  // Add Member Modal State
+  const [addMemberModalOpen, setAddMemberModalOpen] = useState(false);
+  const [memberName, setMemberName] = useState("");
+  const [memberPhone, setMemberPhone] = useState("");
+  const [memberEmail, setMemberEmail] = useState("");
+  const [memberRole, setMemberRole] = useState<UserRole>("MEMBER");
+  const [memberRoom, setMemberRoom] = useState("102");
+  const [memberInstitution, setMemberInstitution] = useState("Dhaka University");
 
   // Mess Settings State
   const [messName, setMessName] = useState("Green View Student Mess");
@@ -32,15 +46,6 @@ export default function AdminPage() {
   const [cutoffBreakfast, setCutoffBreakfast] = useState(22);
   const [cutoffLunch, setCutoffLunch] = useState(8);
   const [cutoffDinner, setCutoffDinner] = useState(16);
-
-  // Members
-  const [members, setMembers] = useState([
-    { id: "1", name: "Rahim Ahmed", email: "rahim@greenview.com", role: "OWNER", room: "201 (Master Bed)", status: "ACTIVE" },
-    { id: "2", name: "Tanvir Hasan", email: "tanvir@greenview.com", role: "MEAL_MANAGER", room: "102 (Bed C)", status: "ACTIVE" },
-    { id: "3", name: "Kamrul Islam", email: "kamrul@greenview.com", role: "MEMBER", room: "101 (Bed A)", status: "ACTIVE" },
-    { id: "4", name: "Sakib Al Mahmud", email: "sakib@greenview.com", role: "MEMBER", room: "101 (Bed B)", status: "ACTIVE" },
-    { id: "5", name: "Mehedi Hasan", email: "mehedi@greenview.com", role: "MEMBER", room: "102 (Bed A)", status: "ACTIVE" },
-  ]);
 
   const [pendingApprovals, setPendingApprovals] = useState([
     {
@@ -62,6 +67,30 @@ export default function AdminPage() {
     },
   ]);
 
+  const handleAddMemberSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!memberName || !memberPhone) {
+      showToast("Please provide member name and phone number", "error");
+      return;
+    }
+
+    const emailToUse = memberEmail || `${memberName.toLowerCase().replace(/\s+/g, "")}@greenview.com`;
+
+    await addMember({
+      name: memberName,
+      phone: memberPhone,
+      email: emailToUse,
+      role: memberRole,
+      roomNumber: memberRoom,
+      institution: memberInstitution,
+    });
+
+    setAddMemberModalOpen(false);
+    setMemberName("");
+    setMemberPhone("");
+    setMemberEmail("");
+  };
+
   const handleApprove = (id: string, title: string) => {
     setPendingApprovals((prev) => prev.filter((a) => a.id !== id));
     showToast(`Approved: ${title}! Added to ledger.`, "success");
@@ -72,13 +101,6 @@ export default function AdminPage() {
     showToast("Mess settings and cut-off schedules updated successfully!", "success");
   };
 
-  const updateMemberRole = (id: string, newRole: string) => {
-    setMembers((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, role: newRole } : m))
-    );
-    showToast("Member permissions updated!", "success");
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
@@ -86,23 +108,23 @@ export default function AdminPage() {
         <div>
           <div className="flex items-center gap-2 text-indigo-600 font-semibold text-xs tracking-wider uppercase">
             <Shield className="w-4 h-4" />
-            <span>Owner & Manager Administration</span>
+            <span>Mess Management &amp; Admin Panel</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-            Mess Admin Control Center
+            Admin Control Center
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Configure tenant branding, manage member roles, approve bazar/payment logs, and execute monthly reconciliation.
+            Add members, allocate rooms, set cut-off schedules, approve bazar/payment logs, and execute monthly closing.
           </p>
         </div>
 
         {/* Tab Switcher */}
         <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl self-start">
           {[
-            { id: "SETTINGS", label: "Branding & Rules", icon: Settings },
-            { id: "MEMBERS", label: "Members Roster", icon: Users },
+            { id: "MEMBERS", label: `Members (${members.length})`, icon: Users },
             { id: "APPROVALS", label: `Approvals (${pendingApprovals.length})`, icon: FileCheck },
             { id: "CLOSING", label: "Monthly Closing", icon: CreditCard },
+            { id: "SETTINGS", label: "Settings", icon: Settings },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -124,12 +146,172 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Tab 1: Settings & Branding */}
+      {/* Tab 1: Members Roster & Add Member */}
+      {activeTab === "MEMBERS" && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-4">
+          <div className="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-slate-900 text-sm">Active Mess Members ({members.length})</h2>
+              <p className="text-xs text-slate-500">
+                Create new member profiles. Once created, members can log in to view their meals, bazar, and ledger.
+              </p>
+            </div>
+            <button
+              onClick={() => setAddMemberModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition active:scale-95 self-start sm:self-auto"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>+ Add New Member (মেম্বার যুক্ত করুন)</span>
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200">
+                <tr>
+                  <th className="py-3 px-4">Member Name</th>
+                  <th className="py-3 px-3">Phone</th>
+                  <th className="py-3 px-3">Email</th>
+                  <th className="py-3 px-3">Assigned Room</th>
+                  <th className="py-3 px-3">Institution / Job</th>
+                  <th className="py-3 px-3">Role</th>
+                  <th className="py-3 px-4 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {members.map((m) => (
+                  <tr key={m.id} className="hover:bg-slate-50/50">
+                    <td className="py-3.5 px-4 font-bold text-slate-900">{m.name}</td>
+                    <td className="py-3.5 px-3 font-mono text-slate-700">{m.phone}</td>
+                    <td className="py-3.5 px-3 font-mono text-slate-500">{m.email}</td>
+                    <td className="py-3.5 px-3 font-semibold text-indigo-700">{m.room}</td>
+                    <td className="py-3.5 px-3 text-slate-600">{m.institution}</td>
+                    <td className="py-3.5 px-3">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          m.role === "OWNER"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : m.role === "MEAL_MANAGER"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-indigo-100 text-indigo-800"
+                        }`}
+                      >
+                        {m.role}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                        {m.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: Approvals */}
+      {activeTab === "APPROVALS" && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="font-bold text-slate-900 text-sm">
+                Pending Manager Approvals ({pendingApprovals.length})
+              </h2>
+              <p className="text-xs text-slate-500">
+                Verify member-submitted bazar vouchers and digital bKash/Nagad payments.
+              </p>
+            </div>
+          </div>
+
+          {pendingApprovals.length === 0 ? (
+            <div className="text-center py-8 text-xs text-slate-500">
+              Zero pending approvals. All items verified!
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingApprovals.map((app) => (
+                <div
+                  key={app.id}
+                  className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                        {app.type}
+                      </span>
+                      <span className="font-bold text-slate-900">{app.title}</span>
+                    </div>
+                    <div className="text-slate-500">
+                      Submitted by: <span className="font-semibold text-slate-700">{app.requestedBy}</span> • Date: {app.date}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 self-end sm:self-auto">
+                    <span className="text-base font-bold text-indigo-600">৳ {app.amount}</span>
+                    <button
+                      onClick={() => handleApprove(app.id, app.title)}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition"
+                    >
+                      Approve &amp; Post to Ledger
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Monthly Closing */}
+      {activeTab === "CLOSING" && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-8 space-y-6">
+          <div className="flex items-center gap-2 pb-4 border-b border-slate-100">
+            <CreditCard className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-base font-bold text-slate-900">
+              Monthly Account Reconciler (November 2026)
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-slate-500 block">Total Kitchen Bazar Spent:</span>
+              <span className="text-2xl font-black text-slate-900">৳ 3,090.00</span>
+            </div>
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-slate-500 block">Total Consumed Meals:</span>
+              <span className="text-2xl font-black text-indigo-600">56.5 Meals</span>
+            </div>
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1">
+              <span className="text-emerald-700 font-medium block">Calculated Meal Rate:</span>
+              <span className="text-2xl font-black text-emerald-800">৳ 54.69 / meal</span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 space-y-2">
+            <span className="font-bold block">Notice on Monthly Closing:</span>
+            <p className="leading-relaxed">
+              Executing the monthly closing will generate individualized member debit statements for consumed meals, room rent, and shared utility costs. It locks past bazar vouchers and produces finalized statements.
+            </p>
+          </div>
+
+          <button
+            onClick={() => showToast("November monthly accounts finalized! Statements sent to all members.", "success")}
+            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition active:scale-95"
+          >
+            Execute November Monthly Closing
+          </button>
+        </div>
+      )}
+
+      {/* Tab 4: Settings */}
       {activeTab === "SETTINGS" && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-8 space-y-6">
           <div className="flex items-center gap-2 pb-4 border-b border-slate-100">
             <Settings className="w-5 h-5 text-indigo-600" />
-            <h2 className="text-base font-bold text-slate-900">Tenant Customization & Meal Schedule</h2>
+            <h2 className="text-base font-bold text-slate-900">Tenant Customization &amp; Meal Schedule</h2>
           </div>
 
           <form onSubmit={handleSaveSettings} className="space-y-6 text-xs max-w-2xl">
@@ -176,50 +358,6 @@ export default function AdminPage() {
               </select>
             </div>
 
-            {/* Cut-off Hours */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-              <span className="font-bold text-slate-800 block">Daily Meal Cut-off Enforcements</span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-slate-500 mb-1">Breakfast Cut-off</label>
-                  <select
-                    value={cutoffBreakfast}
-                    onChange={(e) => setCutoffBreakfast(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-bold text-slate-900"
-                  >
-                    <option value={20}>8:00 PM (Prev Night)</option>
-                    <option value={21}>9:00 PM (Prev Night)</option>
-                    <option value={22}>10:00 PM (Prev Night)</option>
-                    <option value={23}>11:00 PM (Prev Night)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-500 mb-1">Lunch Cut-off</label>
-                  <select
-                    value={cutoffLunch}
-                    onChange={(e) => setCutoffLunch(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-bold text-slate-900"
-                  >
-                    <option value={7}>7:00 AM (Same Day)</option>
-                    <option value={8}>8:00 AM (Same Day)</option>
-                    <option value={9}>9:00 AM (Same Day)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-500 mb-1">Dinner Cut-off</label>
-                  <select
-                    value={cutoffDinner}
-                    onChange={(e) => setCutoffDinner(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-bold text-slate-900"
-                  >
-                    <option value={15}>3:00 PM (Same Day)</option>
-                    <option value={16}>4:00 PM (Same Day)</option>
-                    <option value={17}>5:00 PM (Same Day)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
             <button
               type="submit"
               className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-sm transition"
@@ -230,163 +368,132 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Tab 2: Members Roster */}
-      {activeTab === "MEMBERS" && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-            <div>
-              <h2 className="font-bold text-slate-900 text-sm">Active Mess Members ({members.length})</h2>
-              <p className="text-xs text-slate-500">Manage member roles, permissions, and bed allocations.</p>
-            </div>
-            <button
-              onClick={() => showToast("Invite link copied to clipboard: messmate.com/join/green-view", "success")}
-              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition"
-            >
-              + Invite Member
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4">Member Name</th>
-                  <th className="py-3 px-3">Email</th>
-                  <th className="py-3 px-3">Assigned Room</th>
-                  <th className="py-3 px-3">Role / Permissions</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {members.map((m) => (
-                  <tr key={m.id} className="hover:bg-slate-50/50">
-                    <td className="py-3.5 px-4 font-bold text-slate-900">{m.name}</td>
-                    <td className="py-3.5 px-3 font-mono text-slate-600">{m.email}</td>
-                    <td className="py-3.5 px-3 font-medium text-slate-800">{m.room}</td>
-                    <td className="py-3.5 px-3">
-                      <select
-                        value={m.role}
-                        onChange={(e) => updateMemberRole(m.id, e.target.value)}
-                        className="bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 outline-none"
-                      >
-                        <option value="MEMBER">Member</option>
-                        <option value="MEAL_MANAGER">Meal Manager</option>
-                        <option value="ACCOUNTANT">Accountant</option>
-                        <option value="OWNER">Mess Owner</option>
-                      </select>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                        {m.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => showToast(`Opening profile details for ${m.name}`, "info")}
-                        className="text-indigo-600 hover:text-indigo-800 font-semibold"
-                      >
-                        Edit Details
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 3: Approvals Queue */}
-      {activeTab === "APPROVALS" && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <FileCheck className="w-5 h-5 text-indigo-600" />
-            <span>Pending Approvals ({pendingApprovals.length})</span>
-          </h2>
-
-          {pendingApprovals.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-xs">
-              ✓ All submissions have been approved. No pending items.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {pendingApprovals.map((app) => (
-                <div
-                  key={app.id}
-                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800">
-                        {app.type}
-                      </span>
-                      <h3 className="font-bold text-slate-900 text-sm">{app.title}</h3>
-                    </div>
-                    <p className="text-xs text-slate-600">
-                      Requested by <span className="font-bold">{app.requestedBy}</span> • Date: {app.date}
-                    </p>
-                    {app.trxId && (
-                      <span className="block font-mono text-[11px] text-indigo-600 font-bold">
-                        TrxID: {app.trxId}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3 self-end sm:self-center">
-                    <span className="text-lg font-black text-slate-900">৳ {app.amount}</span>
-                    <button
-                      onClick={() => handleApprove(app.id, app.title)}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition"
-                    >
-                      Approve & Post to Ledger
-                    </button>
-                  </div>
+      {/* ========================================================= */}
+      {/* ADD MEMBER MODAL (মেস মেম্বার যুক্ত করার ফর্ম) */}
+      {/* ========================================================= */}
+      {addMemberModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-700">
+                  <UserPlus className="w-5 h-5" />
                 </div>
-              ))}
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    নতুন মেস মেম্বার যুক্ত করুন (Add Member)
+                  </h3>
+                  <p className="text-xs text-slate-500">Green View Student Mess</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAddMemberModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          )}
-        </div>
-      )}
 
-      {/* Tab 4: Monthly Closing Engine */}
-      {activeTab === "CLOSING" && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-8 space-y-6">
-          <div className="flex items-center gap-2 pb-4 border-b border-slate-100">
-            <CreditCard className="w-5 h-5 text-indigo-600" />
-            <h2 className="text-base font-bold text-slate-900">
-              Monthly Account Reconciler (November 2026)
-            </h2>
+            <form onSubmit={handleAddMemberSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">মেম্বারের পূর্ণ নাম (Full Name)*</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: তরিকুল ইসলাম (Tariqul Islam)"
+                  value={memberName}
+                  onChange={(e) => setMemberName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">মোবাইল নম্বর (লগইনের জন্য)*</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="01712345678"
+                    value={memberPhone}
+                    onChange={(e) => setMemberPhone(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-mono outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">ইমেইল (Email)</label>
+                  <input
+                    type="email"
+                    placeholder="tariqul@greenview.com"
+                    value={memberEmail}
+                    onChange={(e) => setMemberEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-mono outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">রুম নম্বর (Assigned Room)*</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="যেমন: 102 (Bed B)"
+                    value={memberRoom}
+                    onChange={(e) => setMemberRoom(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">মেসের পদবী (Role)</label>
+                  <select
+                    value={memberRole}
+                    onChange={(e) => setMemberRole(e.target.value as UserRole)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="MEMBER">Resident Member (সাধারণ সদস্য)</option>
+                    <option value="MEAL_MANAGER">Meal Manager (মিল ম্যানেজার)</option>
+                    <option value="OWNER">Mess Owner / Admin</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">প্রতিষ্ঠান / কর্মস্থল (University / Job)</label>
+                <input
+                  type="text"
+                  placeholder="যেমন: ঢাকা বিশ্ববিদ্যালয় (পদার্থবিজ্ঞান বিভাগ)"
+                  value={memberInstitution}
+                  onChange={(e) => setMemberInstitution(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-indigo-50 text-indigo-800 text-[11px] space-y-1">
+                <span className="font-bold">সুবিধা:</span>
+                <p>
+                  মেম্বার প্রোফাইল তৈরি হওয়ার সাথে সাথেই তারা মেসের পোর্টালটিতে লগইন করে নিজের মিল অন/অফ করতে পারবে, বাজার খরচ ও মাসিক বিল পরিশোধ করতে পারবে।
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAddMemberModalOpen(false)}
+                  className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm transition"
+                >
+                  মেম্বার প্রোফাইল তৈরি করুন
+                </button>
+              </div>
+            </form>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-              <span className="text-slate-500 block">Total Kitchen Bazar Spent:</span>
-              <span className="text-2xl font-black text-slate-900">৳ 3,090.00</span>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-              <span className="text-slate-500 block">Total Consumed Meals:</span>
-              <span className="text-2xl font-black text-indigo-600">56.5 Meals</span>
-            </div>
-            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1">
-              <span className="text-emerald-700 font-medium block">Calculated Meal Rate:</span>
-              <span className="text-2xl font-black text-emerald-800">৳ 54.69 / meal</span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 space-y-2">
-            <span className="font-bold block">Notice on Monthly Closing:</span>
-            <p className="leading-relaxed">
-              Executing the monthly closing will generate individualized member debit statements for consumed meals, room rent, and shared utility costs (Internet, cook salary, electricity, gas). It locks past bazar vouchers and produces finalized statements.
-            </p>
-          </div>
-
-          <button
-            onClick={() => showToast("November monthly accounts finalized! Statements sent to all members.", "success")}
-            className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition active:scale-95"
-          >
-            Execute November Monthly Closing
-          </button>
         </div>
       )}
     </div>
