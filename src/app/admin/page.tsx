@@ -26,6 +26,8 @@ import {
   Edit3,
   UserCheck,
   ShieldAlert,
+  Camera,
+  HeartPulse,
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -39,8 +41,22 @@ export default function AdminPage() {
   const [memberPhone, setMemberPhone] = useState("");
   const [memberEmail, setMemberEmail] = useState("");
   const [memberRole, setMemberRole] = useState<UserRole>("MEMBER");
-  const [memberRoom, setMemberRoom] = useState("102");
+  const [memberRoom, setMemberRoom] = useState("103");
   const [memberInstitution, setMemberInstitution] = useState("Dhaka University");
+  const [memberAvatarUrl, setMemberAvatarUrl] = useState("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80");
+  const [memberDescription, setMemberDescription] = useState("");
+  const [emergencyContactName, setEmergencyContactName] = useState("");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
+  const [emergencyContactRelation, setEmergencyContactRelation] = useState("Father (পিতা)");
+
+  // Preset Avatars for quick selection
+  const avatarPresets = [
+    { label: "Male 1", url: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80" },
+    { label: "Male 2", url: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=200&q=80" },
+    { label: "Male 3", url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80" },
+    { label: "Male 4", url: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=200&q=80" },
+    { label: "Male 5", url: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80" },
+  ];
 
   // Role Edit Modal State
   const [roleModalOpen, setRoleModalOpen] = useState(false);
@@ -92,12 +108,20 @@ export default function AdminPage() {
       role: memberRole,
       roomNumber: memberRoom,
       institution: memberInstitution,
+      avatarUrl: memberAvatarUrl,
+      description: memberDescription,
+      emergencyContactName,
+      emergencyContactPhone,
+      emergencyContactRelation,
     });
 
     setAddMemberModalOpen(false);
     setMemberName("");
     setMemberPhone("");
     setMemberEmail("");
+    setMemberDescription("");
+    setEmergencyContactName("");
+    setEmergencyContactPhone("");
   };
 
   const handleApprove = (id: string, title: string) => {
@@ -198,30 +222,48 @@ export default function AdminPage() {
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200">
                 <tr>
-                  <th className="py-3 px-4">Member Name</th>
-                  <th className="py-3 px-3">Phone</th>
-                  <th className="py-3 px-3">Email</th>
+                  <th className="py-3 px-4">Member (ছবি ও নাম)</th>
+                  <th className="py-3 px-3">Contact</th>
                   <th className="py-3 px-3">Assigned Room</th>
                   <th className="py-3 px-3">Institution / Job</th>
                   <th className="py-3 px-3">Role / পদবী</th>
+                  <th className="py-3 px-3">Emergency Contact</th>
                   <th className="py-3 px-3 text-center">Status</th>
-                  <th className="py-3 px-4 text-right">Actions (রোল এডিট)</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {members.map((m) => (
                   <tr key={m.id} className="hover:bg-slate-50/50 transition">
-                    <td className="py-3.5 px-4 font-bold text-slate-900">{m.name}</td>
-                    <td className="py-3.5 px-3 font-mono text-slate-700">{m.phone}</td>
-                    <td className="py-3.5 px-3 font-mono text-slate-500">{m.email}</td>
-                    <td className="py-3.5 px-3 font-semibold text-indigo-700">{m.room}</td>
-                    <td className="py-3.5 px-3 text-slate-600">{m.institution}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={m.avatarUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80"}
+                          alt={m.name}
+                          className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
+                        />
+                        <div>
+                          <span className="font-bold text-slate-900 block text-xs">{m.name}</span>
+                          {m.description && (
+                            <span className="text-[11px] text-slate-500 block truncate max-w-[180px]">
+                              {m.description}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <span className="font-mono text-slate-800 block text-xs">{m.phone}</span>
+                      <span className="text-[11px] text-slate-400 font-mono">{m.email}</span>
+                    </td>
+                    <td className="py-3.5 px-3 font-semibold text-indigo-700 text-xs">{m.room}</td>
+                    <td className="py-3.5 px-3 text-slate-600 text-xs">{m.institution}</td>
                     <td className="py-3.5 px-3">
                       <select
-                        value={m.role}
+                        value={m.role === "OWNER" ? "ADMIN" : m.role}
                         onChange={(e) => handleInlineRoleChange(m.id, e.target.value as UserRole)}
                         className={`text-[11px] font-bold rounded-lg border px-2 py-1 transition cursor-pointer shadow-2xs outline-none ${
-                          m.role === "OWNER"
+                          m.role === "ADMIN" || m.role === "OWNER"
                             ? "bg-emerald-50 text-emerald-800 border-emerald-300 focus:ring-1 focus:ring-emerald-500"
                             : m.role === "MEAL_MANAGER"
                             ? "bg-amber-50 text-amber-800 border-amber-300 focus:ring-1 focus:ring-amber-500"
@@ -232,10 +274,25 @@ export default function AdminPage() {
                         title="Click to change member role"
                       >
                         <option value="MEMBER">MEMBER (মেম্বার)</option>
-                        <option value="MEAL_MANAGER">MEAL_MANAGER (মিল ম্যানেজার)</option>
-                        <option value="OWNER">OWNER (মেস মালিক)</option>
+                        <option value="MEAL_MANAGER">MEAL_MANAGER (ম্যানেজার)</option>
+                        <option value="ADMIN">ADMIN (মেস এডমিন)</option>
                         <option value="SUPER_ADMIN">SUPER_ADMIN (সুপার এডমিন)</option>
                       </select>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      {m.emergencyContactPhone ? (
+                        <div className="space-y-0.5">
+                          <span className="font-mono font-bold text-slate-800 block text-xs">
+                            {m.emergencyContactPhone}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {m.emergencyContactName ? `${m.emergencyContactName} ` : ""}
+                            {m.emergencyContactRelation ? `(${m.emergencyContactRelation})` : ""}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">নট সেট</span>
+                      )}
                     </td>
                     <td className="py-3.5 px-3 text-center">
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
@@ -248,7 +305,7 @@ export default function AdminPage() {
                         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-semibold text-[11px] border border-slate-200 transition"
                       >
                         <Edit3 className="w-3 h-3" />
-                        <span>Edit Role (রোল এডিট)</span>
+                        <span>রোল এডিট</span>
                       </button>
                     </td>
                   </tr>
@@ -442,89 +499,188 @@ export default function AdminPage() {
             </div>
 
             <form onSubmit={handleAddMemberSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">মেম্বারের পূর্ণ নাম (Full Name)*</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="যেমন: তরিকুল ইসলাম (Tariqul Islam)"
-                  value={memberName}
-                  onChange={(e) => setMemberName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-medium outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">মোবাইল নম্বর (লগইনের জন্য)*</label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="01712345678"
-                    value={memberPhone}
-                    onChange={(e) => setMemberPhone(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-mono outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
+              {/* SECTION 1: BASIC INFO */}
+              <div className="space-y-3">
+                <span className="font-bold text-slate-800 text-xs uppercase tracking-wider block border-b border-slate-100 pb-1">
+                  ১. মৌলিক তথ্য (Basic Info)
+                </span>
 
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">ইমেইল (Email)</label>
-                  <input
-                    type="email"
-                    placeholder="tariqul@greenview.com"
-                    value={memberEmail}
-                    onChange={(e) => setMemberEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-mono outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">রুম নম্বর (Assigned Room)*</label>
+                  <label className="block text-slate-700 font-semibold mb-1">মেম্বারের পূর্ণ নাম (Full Name)*</label>
                   <input
                     type="text"
                     required
-                    placeholder="যেমন: 102 (Bed B)"
-                    value={memberRoom}
-                    onChange={(e) => setMemberRoom(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="যেমন: তরিকুল ইসলাম (Tariqul Islam)"
+                    value={memberName}
+                    onChange={(e) => setMemberName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-medium outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">মোবাইল নম্বর (Phone)*</label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="01712345678"
+                      value={memberPhone}
+                      onChange={(e) => setMemberPhone(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-mono outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">ইমেইল (Email)</label>
+                    <input
+                      type="email"
+                      placeholder="tariqul@greenview.com"
+                      value={memberEmail}
+                      onChange={(e) => setMemberEmail(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-mono outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">রুম নম্বর (Assigned Room)*</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="যেমন: 103 (Bed A)"
+                      value={memberRoom}
+                      onChange={(e) => setMemberRoom(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">মেসের পদবী (Role)</label>
+                    <select
+                      value={memberRole === "OWNER" ? "ADMIN" : memberRole}
+                      onChange={(e) => setMemberRole(e.target.value as UserRole)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="MEMBER">Resident Member (সাধারণ সদস্য)</option>
+                      <option value="MEAL_MANAGER">Meal Manager (মিল ম্যানেজার)</option>
+                      <option value="ADMIN">Mess Admin (মেস এডমিন)</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">মেসের পদবী (Role)</label>
-                  <select
-                    value={memberRole}
-                    onChange={(e) => setMemberRole(e.target.value as UserRole)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="MEMBER">Resident Member (সাধারণ সদস্য)</option>
-                    <option value="MEAL_MANAGER">Meal Manager (মিল ম্যানেজার)</option>
-                    <option value="OWNER">Mess Owner / Admin</option>
-                  </select>
+                  <label className="block text-slate-700 font-semibold mb-1">প্রতিষ্ঠান / কর্মস্থল (University / Job)</label>
+                  <input
+                    type="text"
+                    placeholder="যেমন: ঢাকা বিশ্ববিদ্যালয় (পদার্থবিজ্ঞান বিভাগ)"
+                    value={memberInstitution}
+                    onChange={(e) => setMemberInstitution(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">প্রতিষ্ঠান / কর্মস্থল (University / Job)</label>
-                <input
-                  type="text"
-                  placeholder="যেমন: ঢাকা বিশ্ববিদ্যালয় (পদার্থবিজ্ঞান বিভাগ)"
-                  value={memberInstitution}
-                  onChange={(e) => setMemberInstitution(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+              {/* SECTION 2: PHOTO & DESCRIPTION */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <span className="font-bold text-slate-800 text-xs uppercase tracking-wider block">
+                  ২. ছবি ও সংক্ষিপ্ত বিবরণ (Photo & Description)
+                </span>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">মেম্বারের ছবি (Member Photo)</label>
+                  <div className="flex items-center gap-3 mb-2">
+                    <img
+                      src={memberAvatarUrl}
+                      alt="Preview"
+                      className="w-12 h-12 rounded-xl object-cover border-2 border-indigo-500 shadow-2xs"
+                    />
+                    <div className="flex-1">
+                      <input
+                        type="url"
+                        placeholder="ছবির লিংক দিন (https://...)"
+                        value={memberAvatarUrl}
+                        onChange={(e) => setMemberAvatarUrl(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-slate-900 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Preset Avatars */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-slate-500 font-semibold">ডিফল্ট ছবি বেছে নিন:</span>
+                    <div className="flex items-center gap-1.5">
+                      {avatarPresets.map((av, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setMemberAvatarUrl(av.url)}
+                          className={`w-7 h-7 rounded-lg overflow-hidden border-2 transition ${
+                            memberAvatarUrl === av.url ? "border-indigo-600 ring-2 ring-indigo-400" : "border-slate-200 opacity-70 hover:opacity-100"
+                          }`}
+                        >
+                          <img src={av.url} alt={av.label} className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 font-semibold mb-1">সংক্ষিপ্ত বিবরণ বা নোট (Description / Bio)</label>
+                  <textarea
+                    rows={2}
+                    placeholder="যেমন: রক্তের গ্রুপ B+, শখ: টেবিল টেনিস ও ফটোগ্রাফি"
+                    value={memberDescription}
+                    onChange={(e) => setMemberDescription(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-indigo-50 text-indigo-800 text-[11px] space-y-1">
-                <span className="font-bold">সুবিধা:</span>
-                <p>
-                  মেম্বার প্রোফাইল তৈরি হওয়ার সাথে সাথেই তারা মেসের পোর্টালটিতে লগইন করে নিজের মিল অন/অফ করতে পারবে, বাজার খরচ ও মাসিক বিল পরিশোধ করতে পারবে।
-                </p>
+              {/* SECTION 3: EMERGENCY CONTACT */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <span className="font-bold text-slate-800 text-xs uppercase tracking-wider block">
+                  ৩. জরুরি যোগাযোগ (Emergency Contact)
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">অভিভাবকের নাম</label>
+                    <input
+                      type="text"
+                      placeholder="যেমন: মো. রফিকুল ইসলাম"
+                      value={emergencyContactName}
+                      onChange={(e) => setEmergencyContactName(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-slate-900 outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">জরুরি ফোন নম্বর*</label>
+                    <input
+                      type="tel"
+                      placeholder="01712000000"
+                      value={emergencyContactPhone}
+                      onChange={(e) => setEmergencyContactPhone(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-slate-900 font-mono outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">সম্পর্ক (Relation)</label>
+                    <input
+                      type="text"
+                      placeholder="যেমন: পিতা / মাতা / ভাই"
+                      value={emergencyContactRelation}
+                      onChange={(e) => setEmergencyContactRelation(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-slate-900 outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setAddMemberModalOpen(false)}
@@ -577,7 +733,7 @@ export default function AdminPage() {
                 <p className="text-xs text-slate-500">{editingMember.email} • {editingMember.room}</p>
               </div>
               <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800">
-                বর্তমান: {editingMember.role}
+                বর্তমান: {editingMember.role === "OWNER" ? "ADMIN" : editingMember.role}
               </span>
             </div>
 
@@ -645,11 +801,11 @@ export default function AdminPage() {
                   </div>
                 </label>
 
-                {/* Option 3: OWNER */}
+                {/* Option 3: ADMIN */}
                 <label
-                  onClick={() => setSelectedNewRole("OWNER")}
+                  onClick={() => setSelectedNewRole("ADMIN")}
                   className={`block p-3 rounded-2xl border cursor-pointer transition ${
-                    selectedNewRole === "OWNER"
+                    selectedNewRole === "ADMIN" || selectedNewRole === "OWNER"
                       ? "border-emerald-600 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-500"
                       : "border-slate-200 hover:border-slate-300 bg-white"
                   }`}
@@ -657,8 +813,8 @@ export default function AdminPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 text-xs">OWNER (মেস মালিক / বাড়িওয়ালা)</span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Full Access</span>
+                        <span className="font-bold text-slate-900 text-xs">ADMIN (মেস এডমিন)</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Full Admin</span>
                       </div>
                       <p className="text-[11px] text-slate-500 mt-1">
                         সম্পূর্ণ মেস নিয়ন্ত্রণ: নতুন সদস্য অ্যাড করা, রোল এডিট করা, ভাড়া ও ইউটিলিটি বিল এডিট করা এবং মাস শেষ ক্লোজিং অনুমোদন করা।
@@ -667,10 +823,42 @@ export default function AdminPage() {
                     <input
                       type="radio"
                       name="roleOption"
-                      checked={selectedNewRole === "OWNER"}
-                      onChange={() => setSelectedNewRole("OWNER")}
+                      checked={selectedNewRole === "ADMIN" || selectedNewRole === "OWNER"}
+                      onChange={() => setSelectedNewRole("ADMIN")}
                       className="mt-1 text-emerald-600 focus:ring-emerald-500"
                     />
+                  </div>
+                </label>
+
+                {/* Option 4: SUPER_ADMIN */}
+                <label
+                  onClick={() => setSelectedNewRole("SUPER_ADMIN")}
+                  className={`block p-3 rounded-2xl border cursor-pointer transition ${
+                    selectedNewRole === "SUPER_ADMIN"
+                      ? "border-purple-600 bg-purple-50/50 shadow-xs ring-1 ring-purple-500"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-xs">SUPER_ADMIN (সুপার এডমিন)</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">System Root</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        প্ল্যাটফর্মের সর্বোচ্চ লেভেল অ্যাক্সেস ও কনফিগারেশন।
+                      </p>
+                    </div>
+                    <input
+                      type="radio"
+                      name="roleOption"
+                      checked={selectedNewRole === "SUPER_ADMIN"}
+                      onChange={() => setSelectedNewRole("SUPER_ADMIN")}
+                      className="mt-1 text-purple-600 focus:ring-purple-500"
+                    />
+                  </div>
+                </label>
+              </div>
                   </div>
                 </label>
 

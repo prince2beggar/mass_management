@@ -57,8 +57,8 @@ interface MemberMealAccount {
 export default function FinancePage() {
   const { role, currentUser, showToast, locale } = useApp();
 
-  // Access Control: Only Mess Owner (Rahim Ahmed) or Super Admin can edit & see ALL members' rent bills!
-  const isOwnerOrAdmin = role === "OWNER" || role === "SUPER_ADMIN";
+  // Access Control: Mess Admin or Super Admin can edit & see all members' rent bills
+  const isOwnerOrAdmin = role === "ADMIN" || role === "OWNER" || role === "SUPER_ADMIN";
 
   // Identify current member
   const currentMemberName = currentUser?.name || (role === "MEAL_MANAGER" ? "Tanvir Hasan" : "Kamrul Islam");

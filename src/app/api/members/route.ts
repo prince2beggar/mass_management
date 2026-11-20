@@ -99,8 +99,8 @@ export async function GET(request: Request) {
         joinedDate: m.joinedAt.toISOString().split("T")[0],
         room: roomDesc,
         institution:
-          m.role === "OWNER"
-            ? "Mess Landlord / Flat Owner"
+          m.role === "OWNER" || m.role === "ADMIN"
+            ? "Mess Admin / Manager"
             : m.role === "MEAL_MANAGER"
             ? "Dhaka University (Accounting)"
             : "Dhaka University / Student",
@@ -121,7 +121,20 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, phone, role = "MEMBER", tenantSlug = "green-view", roomNumber, institution } = body;
+    const {
+      name,
+      email,
+      phone,
+      role = "MEMBER",
+      tenantSlug = "green-view",
+      roomNumber,
+      institution,
+      avatarUrl,
+      description,
+      emergencyContactName,
+      emergencyContactPhone,
+      emergencyContactRelation,
+    } = body;
 
     if (!name || !email) {
       return NextResponse.json({ error: "Name and Email are required" }, { status: 400 });
@@ -141,11 +154,13 @@ export async function POST(request: Request) {
       update: {
         name,
         phone: phone || null,
+        avatarUrl: avatarUrl || null,
       },
       create: {
         name,
         email,
         phone: phone || null,
+        avatarUrl: avatarUrl || null,
         passwordHash: "demo123",
       },
     });
@@ -185,6 +200,11 @@ export async function POST(request: Request) {
         status: membership.status,
         room: roomNumber ? `Room ${roomNumber}` : "Room Pending",
         institution: institution || "Dhaka University",
+        avatarUrl: user.avatarUrl,
+        description,
+        emergencyContactName,
+        emergencyContactPhone,
+        emergencyContactRelation,
       },
     });
   } catch (error: any) {

@@ -60,7 +60,7 @@ export default function Header() {
   const roleOptions: { role: UserRole; label: string }[] = [
     { role: "MEMBER", label: "Kamrul Islam (Member)" },
     { role: "MEAL_MANAGER", label: "Tanvir Hasan (Meal Manager)" },
-    { role: "OWNER", label: "Rahim Ahmed (Mess Admin/Owner)" },
+    { role: "OWNER", label: "Rahim Ahmed (Mess Admin)" },
     { role: "SUPER_ADMIN", label: "Platform Super Admin" },
     { role: "GUEST", label: "Guest / Public Visitor" },
   ];

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Locale, translations, getTranslation } from "@/lib/i18n";
 
-export type UserRole = "OWNER" | "MEAL_MANAGER" | "MEMBER" | "SUPER_ADMIN" | "GUEST";
+export type UserRole = "ADMIN" | "OWNER" | "MEAL_MANAGER" | "MEMBER" | "SUPER_ADMIN" | "GUEST";
 
 export interface CurrentUser {
   name: string;
@@ -21,12 +21,16 @@ export interface AppMember {
   role: UserRole;
   room: string;
   institution: string;
+  description?: string;
+  avatarUrl?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
   status: "ACTIVE" | "EX_MEMBER";
   joinedDate: string;
   leftDate?: string;
   achievement?: string;
   achievementBn?: string;
-  avatarUrl?: string;
 }
 
 interface AppContextType {
@@ -47,6 +51,11 @@ interface AppContextType {
     role: UserRole;
     roomNumber: string;
     institution: string;
+    description?: string;
+    avatarUrl?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    emergencyContactRelation?: string;
   }) => Promise<boolean>;
   updateMemberRole: (memberId: string, newRole: UserRole) => Promise<boolean>;
   t: (typeof translations)["en"];
@@ -65,9 +74,13 @@ const initialActiveMembers: AppMember[] = [
     name: "Rahim Ahmed",
     phone: "01711223344",
     email: "rahim@greenview.com",
-    role: "OWNER",
+    role: "ADMIN",
     room: "Room 201 (Master Bed)",
-    institution: "Mess Landlord / Flat Owner",
+    institution: "Mess Admin / Manager",
+    description: "মেস অ্যাডমিনিস্ট্রেশন ও ম্যানেজমেন্ট ইনচার্জ",
+    emergencyContactName: "ফারহানা আহমেদ",
+    emergencyContactPhone: "01711009988",
+    emergencyContactRelation: "Spouse",
     status: "ACTIVE",
     joinedDate: "2020-01-01",
     avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80",
@@ -80,6 +93,10 @@ const initialActiveMembers: AppMember[] = [
     role: "MEAL_MANAGER",
     room: "Room 102 (Bed C)",
     institution: "Dhaka University (Accounting)",
+    description: "চলতি মাসের মিল ও বাজার হিসাব ইনচার্জ",
+    emergencyContactName: "আনোয়ার হোসেন",
+    emergencyContactPhone: "01912554433",
+    emergencyContactRelation: "Brother",
     status: "ACTIVE",
     joinedDate: "2024-01-15",
     avatarUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=200&q=80",
@@ -92,6 +109,10 @@ const initialActiveMembers: AppMember[] = [
     role: "MEMBER",
     room: "Room 101 (Bed A)",
     institution: "Dhaka University (CSE)",
+    description: "সিএসই বিভাগ, ৩য় বর্ষ। রক্তের গ্রুপ B+",
+    emergencyContactName: "মো. রফিকুল ইসলাম",
+    emergencyContactPhone: "01712998877",
+    emergencyContactRelation: "Father",
     status: "ACTIVE",
     joinedDate: "2024-03-01",
     avatarUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
@@ -104,6 +125,10 @@ const initialActiveMembers: AppMember[] = [
     role: "MEMBER",
     room: "Room 101 (Bed B)",
     institution: "BUET (EEE)",
+    description: "বুয়েট ইইই বিভাগ। রক্তের গ্রুপ O+",
+    emergencyContactName: "মাহমুদা বেগম",
+    emergencyContactPhone: "01819776655",
+    emergencyContactRelation: "Mother",
     status: "ACTIVE",
     joinedDate: "2024-05-10",
     avatarUrl: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=200&q=80",
@@ -116,6 +141,10 @@ const initialActiveMembers: AppMember[] = [
     role: "MEMBER",
     room: "Room 102 (Bed A)",
     institution: "Green University (BBA)",
+    description: "বিবিএ শিক্ষার্থী। টেবিল টেনিস ও দাবা প্রিয়",
+    emergencyContactName: "হাসান আলী",
+    emergencyContactPhone: "01511002233",
+    emergencyContactRelation: "Father",
     status: "ACTIVE",
     joinedDate: "2024-06-01",
     avatarUrl: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=200&q=80",
@@ -234,10 +263,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     role: UserRole;
     roomNumber: string;
     institution: string;
+    description?: string;
+    avatarUrl?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    emergencyContactRelation?: string;
   }): Promise<boolean> => {
     try {
       // Also sync with backend API
-      const res = await fetch("/api/members", {
+      await fetch("/api/members", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -254,16 +288,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         role: newMember.role,
         room: `Room ${newMember.roomNumber}`,
         institution: newMember.institution || "Dhaka University",
+        description: newMember.description || "Active mess resident",
+        avatarUrl:
+          newMember.avatarUrl ||
+          "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
+        emergencyContactName: newMember.emergencyContactName,
+        emergencyContactPhone: newMember.emergencyContactPhone,
+        emergencyContactRelation: newMember.emergencyContactRelation,
         status: "ACTIVE",
         joinedDate: new Date().toISOString().split("T")[0],
-        avatarUrl: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80",
       };
 
       setMembers((prev) => [memberItem, ...prev]);
       showToast(
         locale === "bn"
-          ? `মেম্বার ${newMember.name} সফলভাবে যুক্ত হয়েছে! তারা এখন লগইন করতে পারবে।`
-          : `Member ${newMember.name} added successfully! Profile created.`,
+          ? `মেম্বার ${newMember.name} সফলভাবে যুক্ত হয়েছে! ছবি ও ইমার্জেন্সি কন্টাক্ট সেভ করা হয়েছে।`
+          : `Member ${newMember.name} added with photo and emergency contact!`,
         "success"
       );
       return true;

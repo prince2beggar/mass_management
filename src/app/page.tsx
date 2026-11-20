@@ -259,18 +259,23 @@ export default function HomePage() {
                     <h3 className="font-bold text-slate-900 text-sm truncate">{m.name}</h3>
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                        m.role === "OWNER"
+                        m.role === "ADMIN" || m.role === "OWNER"
                           ? "bg-emerald-100 text-emerald-800"
                           : m.role === "MEAL_MANAGER"
                           ? "bg-amber-100 text-amber-800"
                           : "bg-indigo-100 text-indigo-800"
                       }`}
                     >
-                      {m.role === "OWNER" ? "Owner" : m.role === "MEAL_MANAGER" ? "Manager" : "Member"}
+                      {m.role === "ADMIN" || m.role === "OWNER" ? "Admin" : m.role === "MEAL_MANAGER" ? "Manager" : "Member"}
                     </span>
                   </div>
                   <p className="text-xs text-indigo-600 font-semibold">{m.room}</p>
-                  <p className="text-[11px] text-slate-500 truncate mt-0.5">{m.institution}</p>
+                  <p className="text-[11px] text-slate-500 truncate mt-0.5">{m.description || m.institution}</p>
+                  {m.emergencyContactPhone && (
+                    <div className="mt-1.5 flex items-center gap-1 text-[10px] text-rose-700 bg-rose-50 border border-rose-100/80 px-2 py-0.5 rounded-lg w-fit">
+                      <span>জরুরি: {m.emergencyContactPhone} ({m.emergencyContactRelation || "অভিভাবক"})</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -431,8 +436,8 @@ export default function HomePage() {
             </div>
             <p className="text-xs text-slate-400">
               {locale === "bn"
-                ? "যেকোনো জরুরি প্রয়োজনে জাতীয় হটলাইন অথবা মেস ওনারের সরাসরি নম্বরে কল করুন।"
-                : "For police, medical, fire, or mess authority emergencies."}
+                ? "যেকোনো জরুরি প্রয়োজনে জাতীয় হটলাইন অথবা মেস এডমিনের সরাসরি নম্বরে কল করুন।"
+                : "For police, medical, fire, or mess admin emergencies."}
             </p>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <a
@@ -445,7 +450,7 @@ export default function HomePage() {
                 href="tel:+8801711223344"
                 className="p-3 rounded-xl bg-slate-800 hover:bg-slate-700 font-semibold text-center block text-slate-200 border border-slate-700"
               >
-                Call Landlord
+                Call Admin
               </a>
             </div>
           </div>
@@ -615,11 +620,11 @@ export default function HomePage() {
                   </div>
                 </label>
 
-                {/* Option 3: OWNER */}
+                {/* Option 3: ADMIN */}
                 <label
-                  onClick={() => setSelectedNewRole("OWNER")}
+                  onClick={() => setSelectedNewRole("ADMIN")}
                   className={`block p-3 rounded-2xl border cursor-pointer transition ${
-                    selectedNewRole === "OWNER"
+                    selectedNewRole === "ADMIN" || selectedNewRole === "OWNER"
                       ? "border-emerald-600 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-500"
                       : "border-slate-200 hover:border-slate-300 bg-white"
                   }`}
@@ -627,18 +632,18 @@ export default function HomePage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 text-xs">OWNER (মেস মালিক / বাড়িওয়ালা)</span>
+                        <span className="font-bold text-slate-900 text-xs">ADMIN (মেস এডমিন)</span>
                         <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Full Access</span>
                       </div>
                       <p className="text-[11px] text-slate-500 mt-1">
-                        সম্পূর্ণ মেস নিয়ন্ত্রণ: নতুন সদস্য অ্যাড করা, রোল এডিট করা, ভাড়া ও ইউটিলিটি বিল এডিট করা এবং মাস শেষ ক্লোজিং অনুমোদন করা।
+                        সম্পূর্ণ মেস নিয়ন্ত্রণ: নতুন সদস্য ও ছবি অ্যাড করা, রোল এডিট করা, ভাড়া ও ইউটিলিটি বিল এডিট করা এবং মাস শেষ ক্লোজিং অনুমোদন করা।
                       </p>
                     </div>
                     <input
                       type="radio"
                       name="homeRoleOption"
-                      checked={selectedNewRole === "OWNER"}
-                      onChange={() => setSelectedNewRole("OWNER")}
+                      checked={selectedNewRole === "ADMIN" || selectedNewRole === "OWNER"}
+                      onChange={() => setSelectedNewRole("ADMIN")}
                       className="mt-1 text-emerald-600 focus:ring-emerald-500"
                     />
                   </div>

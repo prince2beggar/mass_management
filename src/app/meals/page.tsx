@@ -52,8 +52,8 @@ export default function MealsPage() {
   const { t, role, currentUser, showToast, locale } = useApp();
   const [selectedDate, setSelectedDate] = useState("2026-11-20");
 
-  // Permission Check: Only Admin/Owner or Meal Manager can edit everyone's meals!
-  const canManageAll = role === "OWNER" || role === "MEAL_MANAGER" || role === "SUPER_ADMIN";
+  // Permission Check: Only Admin or Meal Manager can edit everyone's meals!
+  const canManageAll = role === "ADMIN" || role === "OWNER" || role === "MEAL_MANAGER" || role === "SUPER_ADMIN";
 
   // Today's Attendance State
   const [membersMeals, setMembersMeals] = useState<MemberMeal[]>([
@@ -107,7 +107,7 @@ export default function MealsPage() {
     },
     {
       id: "m-5",
-      name: "Rahim Ahmed (Owner)",
+      name: "Rahim Ahmed (Admin)",
       room: "201-A",
       breakfast: 1,
       lunch: 1,
@@ -155,11 +155,11 @@ export default function MealsPage() {
     },
     {
       id: "s-5",
-      name: "Rahim Ahmed (Owner)",
+      name: "Rahim Ahmed (Admin)",
       room: "Room 201-A",
       totalMeals: 30,
       totalBazar: 1500,
-      role: "OWNER",
+      role: "ADMIN",
     },
   ]);
 
@@ -428,9 +428,9 @@ export default function MealsPage() {
                             Manager
                           </span>
                         )}
-                        {item.role === "OWNER" && (
+                        {(item.role === "ADMIN" || item.role === "OWNER") && (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
-                            Owner
+                            Admin
                           </span>
                         )}
                       </div>
