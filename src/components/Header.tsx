@@ -154,11 +154,18 @@ export default function Header() {
             </nav>
 
             {/* Admin / Portal Shortcut */}
-            <div className="hidden sm:flex items-center gap-2.5">
+            <div className="hidden sm:flex items-center gap-2">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition active:scale-95"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>{locale === "bn" ? "মেম্বার পোর্টাল" : "Member Portal"}</span>
+              </Link>
               {(role === "OWNER" || role === "MEAL_MANAGER" || role === "SUPER_ADMIN") && (
                 <Link
                   href="/admin"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition active:scale-95"
                 >
                   <Shield className="w-3.5 h-3.5" />
                   <span>{t.nav.adminPortal}</span>
@@ -176,7 +183,7 @@ export default function Header() {
               {role === "SUPER_ADMIN" && (
                 <Link
                   href="/super-admin"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition active:scale-95"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
                   <span>SaaS Admin</span>
