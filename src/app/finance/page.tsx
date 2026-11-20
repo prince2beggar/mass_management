@@ -27,6 +27,16 @@ import {
   Trash2,
   PlusCircle,
   Save,
+  TrendingUp,
+  TrendingDown,
+  Utensils,
+  Layers,
+  Split,
+  ChevronRight,
+  Sparkles,
+  HelpCircle,
+  CheckCheck,
+  RotateCcw,
 } from "lucide-react";
 
 interface InvoiceItem {
@@ -47,6 +57,16 @@ interface Invoice {
   items: InvoiceItem[];
 }
 
+interface MemberMealAccount {
+  memberName: string;
+  room: string;
+  totalMeals: number;
+  mealRate: number;
+  totalBazarSpent: number;
+  mealCost: number; // totalMeals * mealRate
+  netMealBalance: number; // totalBazarSpent - mealCost (>0: পাবে/Refund, <0: দিবে/Due)
+}
+
 export default function FinancePage() {
   const { t, role, currentUser, showToast, locale } = useApp();
 
@@ -56,7 +76,13 @@ export default function FinancePage() {
   // Identify current member
   const currentMemberName = currentUser?.name || (role === "MEAL_MANAGER" ? "Tanvir Hasan" : "Kamrul Islam");
 
-  // Invoices for mess members
+  // Global View Mode: COMBINED (সম্মিলিত একাউন্ট), SEPARATE (আলাদা আলাদা বিল), RENT_ONLY (শুধু বাসা ভাড়া), MEALS_ONLY (শুধু মিল ও বাজার)
+  const [globalViewMode, setGlobalViewMode] = useState<"COMBINED" | "SEPARATE" | "RENT_ONLY" | "MEALS_ONLY">("COMBINED");
+
+  // Per-card local toggle override (allows toggling view mode per member card)
+  const [cardOverrides, setCardOverrides] = useState<Record<string, "COMBINED" | "SEPARATE">>({});
+
+  // 1. Rent & Utilities Invoices for mess members
   const [invoices, setInvoices] = useState<Invoice[]>([
     {
       id: "inv-1",
@@ -64,13 +90,12 @@ export default function FinancePage() {
       member: "Kamrul Islam",
       room: "Room 101, Bed A",
       month: "November 2026",
-      totalAmount: 6450,
-      paidAmount: 5000,
+      totalAmount: 4450,
+      paidAmount: 3000,
       dueAmount: 1450,
       status: "PARTIAL",
       items: [
         { name: "Seat Rent (Room 101, Bed A)", amount: 3500 },
-        { name: "Meal Cost Advance (50 meals)", amount: 2000 },
         { name: "WiFi & High-Speed Internet", amount: 250 },
         { name: "Cook & Maid Salary Shared Split", amount: 500 },
         { name: "Waste Disposal Fee", amount: 200 },
@@ -82,13 +107,12 @@ export default function FinancePage() {
       member: "Sakib Al Mahmud",
       room: "Room 101, Bed B",
       month: "November 2026",
-      totalAmount: 6450,
-      paidAmount: 6450,
+      totalAmount: 4450,
+      paidAmount: 4450,
       dueAmount: 0,
       status: "PAID",
       items: [
         { name: "Seat Rent (Room 101, Bed B)", amount: 3500 },
-        { name: "Meal Cost Advance", amount: 2000 },
         { name: "WiFi & High-Speed Internet", amount: 250 },
         { name: "Cook & Maid Salary Shared Split", amount: 500 },
         { name: "Waste Disposal Fee", amount: 200 },
@@ -100,13 +124,12 @@ export default function FinancePage() {
       member: "Mehedi Hasan",
       room: "Room 102, Bed A",
       month: "November 2026",
-      totalAmount: 6150,
-      paidAmount: 6150,
+      totalAmount: 4150,
+      paidAmount: 4150,
       dueAmount: 0,
       status: "PAID",
       items: [
         { name: "Seat Rent (Room 102, Bed A)", amount: 3200 },
-        { name: "Meal Cost Advance", amount: 2000 },
         { name: "WiFi & High-Speed Internet", amount: 250 },
         { name: "Cook & Maid Salary Shared Split", amount: 500 },
         { name: "Waste Disposal Fee", amount: 200 },
@@ -118,19 +141,83 @@ export default function FinancePage() {
       member: "Tanvir Hasan",
       room: "Room 102, Bed B",
       month: "November 2026",
-      totalAmount: 6150,
-      paidAmount: 6150,
+      totalAmount: 4150,
+      paidAmount: 4150,
       dueAmount: 0,
       status: "PAID",
       items: [
         { name: "Seat Rent (Room 102, Bed B)", amount: 3200 },
-        { name: "Meal Cost Advance", amount: 2000 },
         { name: "WiFi & High-Speed Internet", amount: 250 },
         { name: "Cook & Maid Salary Shared Split", amount: 500 },
         { name: "Waste Disposal Fee", amount: 200 },
       ],
     },
+    {
+      id: "inv-5",
+      number: "INV-GV-202611-005",
+      member: "Rahim Ahmed",
+      room: "Room 201, Master Bed",
+      month: "November 2026",
+      totalAmount: 950,
+      paidAmount: 950,
+      dueAmount: 0,
+      status: "PAID",
+      items: [
+        { name: "Mess Maintenance & Common Electricity", amount: 500 },
+        { name: "WiFi & Internet Common Node", amount: 250 },
+        { name: "Waste Disposal Fee", amount: 200 },
+      ],
+    },
   ]);
+
+  // 2. Personal Meal & Bazar Accounting Ledger (বাজার থেকে কত পাবে বা দিবে)
+  const [mealAccounts] = useState<Record<string, MemberMealAccount>>({
+    "Kamrul Islam": {
+      memberName: "Kamrul Islam",
+      room: "Room 101, Bed A",
+      totalMeals: 34,
+      mealRate: 54.5,
+      totalBazarSpent: 2400,
+      mealCost: 1853,
+      netMealBalance: 547, // +547 পাবে (Refund from Bazar)
+    },
+    "Sakib Al Mahmud": {
+      memberName: "Sakib Al Mahmud",
+      room: "Room 101, Bed B",
+      totalMeals: 28,
+      mealRate: 54.5,
+      totalBazarSpent: 1000,
+      mealCost: 1526,
+      netMealBalance: -526, // -526 দিবে (Meal Due)
+    },
+    "Mehedi Hasan": {
+      memberName: "Mehedi Hasan",
+      room: "Room 102, Bed A",
+      totalMeals: 31,
+      mealRate: 54.5,
+      totalBazarSpent: 0,
+      mealCost: 1690,
+      netMealBalance: -1690, // -1690 দিবে (Meal Due)
+    },
+    "Tanvir Hasan": {
+      memberName: "Tanvir Hasan",
+      room: "Room 102, Bed B",
+      totalMeals: 32,
+      mealRate: 54.5,
+      totalBazarSpent: 3090,
+      mealCost: 1744,
+      netMealBalance: 1346, // +1346 পাবে (Refund from Bazar)
+    },
+    "Rahim Ahmed": {
+      memberName: "Rahim Ahmed",
+      room: "Room 201, Master Bed",
+      totalMeals: 30,
+      mealRate: 54.5,
+      totalBazarSpent: 1500,
+      mealCost: 1635,
+      netMealBalance: -135, // -135 দিবে (Meal Due)
+    },
+  });
 
   const [ledgerEntries, setLedgerEntries] = useState([
     {
@@ -138,26 +225,35 @@ export default function FinancePage() {
       date: "2026-11-01",
       member: "Kamrul Islam",
       type: "DEBIT",
-      description: "November Monthly Invoice Generated (INV-GV-202611-001)",
-      amount: 6450,
-      balanceAfter: -6450,
+      description: "November Monthly Room Rent Generated (INV-GV-202611-001)",
+      amount: 4450,
+      balanceAfter: -4450,
     },
     {
       id: "lg-2",
       date: "2026-11-03",
       member: "Kamrul Islam",
       type: "CREDIT",
-      description: "Payment via bKash (TrxID: BKH9123891823)",
-      amount: 5000,
+      description: "Payment via bKash for Room Rent (TrxID: BKH9123891823)",
+      amount: 3000,
       balanceAfter: -1450,
     },
     {
       id: "lg-3",
+      date: "2026-11-15",
+      member: "Kamrul Islam",
+      type: "CREDIT",
+      description: "Daily Bazar Expense Contribution (Vegetables, Chicken, Oil)",
+      amount: 2400,
+      balanceAfter: 950,
+    },
+    {
+      id: "lg-4",
       date: "2026-11-02",
       member: "Sakib Al Mahmud",
       type: "CREDIT",
       description: "Full Rent & Utilities paid via Nagad",
-      amount: 6450,
+      amount: 4450,
       balanceAfter: 0,
     },
   ]);
@@ -166,6 +262,7 @@ export default function FinancePage() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice>(invoices[0]);
   const [payAmount, setPayAmount] = useState("1450");
+  const [payPurpose, setPayPurpose] = useState<"COMBINED" | "RENT" | "MEALS" | "CUSTOM">("COMBINED");
   const [payMethod, setPayMethod] = useState("BKASH");
   const [trxId, setTrxId] = useState("");
   const [adminMemberFilter, setAdminMemberFilter] = useState("ALL");
@@ -178,7 +275,7 @@ export default function FinancePage() {
   const [newItemName, setNewItemName] = useState("");
   const [newItemAmount, setNewItemAmount] = useState("");
 
-  // PRIVACY FILTER: Normal members ONLY see their OWN rent bills & invoices!
+  // PRIVACY FILTER: Normal members ONLY see their OWN rent bills & meal accounts!
   const visibleInvoices = isOwnerOrAdmin
     ? adminMemberFilter === "ALL"
       ? invoices
@@ -197,10 +294,68 @@ export default function FinancePage() {
         return lg.member.toLowerCase().includes(firstName);
       });
 
-  const handlePayInvoice = (inv: Invoice) => {
+  // Helper to compute combined financial reconciliation
+  const getCombinedDetails = (inv: Invoice) => {
+    const mealAcc = mealAccounts[inv.member] || {
+      memberName: inv.member,
+      room: inv.room,
+      totalMeals: 30,
+      mealRate: 54.5,
+      totalBazarSpent: 1500,
+      mealCost: 1635,
+      netMealBalance: -135,
+    };
+
+    const rentDue = inv.dueAmount;
+    // netMealBalance > 0 means the member contributed more bazar than meal expense => gets a refund (পাবে)
+    // netMealBalance < 0 means the member owes money for meals eaten => meal due (দিবে)
+    const mealRefund = mealAcc.netMealBalance > 0 ? mealAcc.netMealBalance : 0;
+    const mealDue = mealAcc.netMealBalance < 0 ? Math.abs(mealAcc.netMealBalance) : 0;
+
+    // Combined Net = Rent Due + Meal Due - Meal Refund
+    const netCombinedBalance = rentDue + mealDue - mealRefund;
+    const isNetRefund = netCombinedBalance < 0;
+    const finalPayable = Math.max(0, netCombinedBalance);
+    const finalRefund = isNetRefund ? Math.abs(netCombinedBalance) : 0;
+
+    return {
+      mealAcc,
+      rentDue,
+      mealRefund,
+      mealDue,
+      netCombinedBalance,
+      isNetRefund,
+      finalPayable,
+      finalRefund,
+    };
+  };
+
+  const handlePayInvoice = (inv: Invoice, defaultPurpose: "COMBINED" | "RENT" | "MEALS" = "COMBINED") => {
     setSelectedInvoice(inv);
-    setPayAmount(inv.dueAmount.toString());
+    const details = getCombinedDetails(inv);
+    setPayPurpose(defaultPurpose);
+
+    if (defaultPurpose === "COMBINED") {
+      setPayAmount(details.finalPayable.toString());
+    } else if (defaultPurpose === "RENT") {
+      setPayAmount(details.rentDue.toString());
+    } else {
+      setPayAmount(details.mealDue.toString());
+    }
+
     setPaymentModalOpen(true);
+  };
+
+  const handlePurposeChange = (newPurpose: "COMBINED" | "RENT" | "MEALS" | "CUSTOM") => {
+    setPayPurpose(newPurpose);
+    const details = getCombinedDetails(selectedInvoice);
+    if (newPurpose === "COMBINED") {
+      setPayAmount(details.finalPayable.toString());
+    } else if (newPurpose === "RENT") {
+      setPayAmount(details.rentDue.toString());
+    } else if (newPurpose === "MEALS") {
+      setPayAmount(details.mealDue.toString());
+    }
   };
 
   // OPEN EDIT BILL MODAL (For Admin)
@@ -274,29 +429,39 @@ export default function FinancePage() {
       return;
     }
 
-    setInvoices((prev) =>
-      prev.map((inv) => {
-        if (inv.id === selectedInvoice.id) {
-          const newPaid = inv.paidAmount + amountNum;
-          const newDue = Math.max(0, inv.totalAmount - newPaid);
-          const newStatus = newDue === 0 ? "PAID" : "PARTIAL";
-          return {
-            ...inv,
-            paidAmount: newPaid,
-            dueAmount: newDue,
-            status: newStatus,
-          };
-        }
-        return inv;
-      })
-    );
+    // If paying towards rent invoice
+    if (payPurpose === "RENT" || payPurpose === "COMBINED") {
+      setInvoices((prev) =>
+        prev.map((inv) => {
+          if (inv.id === selectedInvoice.id) {
+            const newPaid = inv.paidAmount + Math.min(inv.dueAmount, amountNum);
+            const newDue = Math.max(0, inv.totalAmount - newPaid);
+            const newStatus = newDue === 0 ? "PAID" : "PARTIAL";
+            return {
+              ...inv,
+              paidAmount: newPaid,
+              dueAmount: newDue,
+              status: newStatus,
+            };
+          }
+          return inv;
+        })
+      );
+    }
+
+    const purposeLabel =
+      payPurpose === "COMBINED"
+        ? "Combined Net Rent & Meal Bill"
+        : payPurpose === "RENT"
+        ? "Room Rent & Utilities"
+        : "Meal & Bazar Bill Settlement";
 
     const newLedger = {
       id: `lg-${Date.now()}`,
       date: "2026-11-20",
       member: selectedInvoice.member,
       type: "CREDIT",
-      description: `Payment via ${payMethod} (TrxID: ${trxId || "CASH-PAID"})`,
+      description: `Payment via ${payMethod} for ${purposeLabel} (TrxID: ${trxId || "CASH-PAID"})`,
       amount: amountNum,
       balanceAfter: -Math.max(0, selectedInvoice.dueAmount - amountNum),
     };
@@ -304,8 +469,8 @@ export default function FinancePage() {
     setLedgerEntries([newLedger, ...ledgerEntries]);
     showToast(
       locale === "bn"
-        ? `৳ ${payAmount} টাকা পেমেন্ট সফলভাবে জমা হয়েছে!`
-        : `Payment of ৳ ${payAmount} recorded successfully!`,
+        ? `৳ ${payAmount} টাকা ${purposeLabel} বাবদ সফলভাবে জমা হয়েছে!`
+        : `Payment of ৳ ${payAmount} for ${purposeLabel} recorded successfully!`,
       "success"
     );
     setPaymentModalOpen(false);
@@ -315,11 +480,23 @@ export default function FinancePage() {
   const handleMonthlyClosing = () => {
     showToast(
       locale === "bn"
-        ? "নভেম্বর মাসের চূড়ান্ত হিসাব ক্লোজ ও ভাউচার লক করা হয়েছে!"
+        ? "নভেম্বর মাসের চূড়ান্ত হিসাব ক্লোজ ও মিল-বাজার ব্যালেন্স সমন্বয় করা হয়েছে!"
         : "Monthly closing completed! Final meal rate ৳54.50 reconciled, invoices updated.",
       "success"
     );
   };
+
+  // Toggle card view mode for a specific invoice
+  const toggleCardMode = (invId: string, currentEffectiveMode: "COMBINED" | "SEPARATE") => {
+    setCardOverrides((prev) => ({
+      ...prev,
+      [invId]: currentEffectiveMode === "COMBINED" ? "SEPARATE" : "COMBINED",
+    }));
+  };
+
+  // Top metric totals for current viewer
+  const activeInvoice = visibleInvoices[0] || invoices[0];
+  const activeDetails = getCombinedDetails(activeInvoice);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -331,188 +508,720 @@ export default function FinancePage() {
             <span>Green View Student Mess</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-            {locale === "bn" ? "বাসা ভাড়া, ইউটিলিটি ও বিল ব্যবস্থাপনা" : "Room Rent, Bills & Financial Ledger"}
+            {locale === "bn"
+              ? "বিল, ব্যক্তিগত বাজার ব্যালেন্স ও সমন্বয়"
+              : "Room Rent, Meal Ledger & Combined Bills"}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {locale === "bn"
-              ? "বাসা ভাড়া ও ইউটিলিটি বিলের হিসাব। অ্যাডমিন যেকোনো সদস্যের বিল এডিট বা সংশোধন করতে পারবেন।"
-              : "Room rent, utilities, and invoices. Authorized admin can edit bill components at any time."}
+              ? "বাসা ভাড়া ও মিল-বাজারের আলাদা আলাদা হিসাব অথবা একত্রিত কম্বাইন্ড বিল। কে বাজার থেকে কত টাকা পাবে বা দিবে তার লাইভ ব্যালেন্স।"
+              : "Transparent separate rent and meal/bazar accounts, or unified combined net balance with 1-click toggles."}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {isOwnerOrAdmin && (
             <button
               onClick={handleMonthlyClosing}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-md transition active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-md transition active:scale-95"
             >
-              <Calculator className="w-4 h-4" />
+              <Calculator className="w-4 h-4 text-emerald-400" />
               <span>{locale === "bn" ? "মাসিক ক্লোজিং সম্পন্ন করুন" : "Close Month"}</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* PRIVACY & EDIT NOTICE CARD */}
-      <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0">
-            <Lock className="w-5 h-5 text-white" />
+      {/* QUICK SUMMARY CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Rent Due */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4.5 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between text-slate-500 text-xs">
+            <span className="font-semibold">{locale === "bn" ? "বাসা ভাড়া বকেয়া" : "Room Rent Due"}</span>
+            <FileText className="w-4 h-4 text-indigo-600" />
           </div>
-          <div>
-            <span className="font-bold text-white text-sm block">
-              {locale === "bn"
-                ? "বাসা ভাড়া গোপনীয়তা ও বিল এডিট সুবিধা (Bill Edit & Privacy Controls)"
-                : "Rent Privacy & Bill Edit Controls"}
+          <div className="text-2xl font-black text-slate-900">
+            ৳ {activeDetails.rentDue.toLocaleString()}
+          </div>
+          <p className="text-[11px] text-slate-500">
+            {activeInvoice.member} ({activeInvoice.room})
+          </p>
+        </div>
+
+        {/* Card 2: Personal Meal & Bazar Status */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4.5 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between text-slate-500 text-xs">
+            <span className="font-semibold">{locale === "bn" ? "ব্যক্তিগত বাজার ব্যালেন্স" : "Personal Bazar Status"}</span>
+            <Utensils className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="flex items-center gap-2">
+            {activeDetails.mealAcc.netMealBalance > 0 ? (
+              <span className="text-2xl font-black text-emerald-600 flex items-center gap-1">
+                <TrendingUp className="w-5 h-5 text-emerald-500" />
+                +৳ {activeDetails.mealAcc.netMealBalance.toLocaleString()}
+              </span>
+            ) : activeDetails.mealAcc.netMealBalance < 0 ? (
+              <span className="text-2xl font-black text-rose-600 flex items-center gap-1">
+                <TrendingDown className="w-5 h-5 text-rose-500" />
+                -৳ {Math.abs(activeDetails.mealAcc.netMealBalance).toLocaleString()}
+              </span>
+            ) : (
+              <span className="text-2xl font-black text-slate-700">৳ 0</span>
+            )}
+          </div>
+          <p className="text-[11px] font-semibold">
+            {activeDetails.mealAcc.netMealBalance > 0 ? (
+              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-bold">
+                {locale === "bn" ? "মেস তহবিল থেকে পাবেন (Refund)" : "Refund from Mess Fund"}
+              </span>
+            ) : activeDetails.mealAcc.netMealBalance < 0 ? (
+              <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md font-bold">
+                {locale === "bn" ? "মিল বাবদ বকেয়া (Meal Due)" : "Due for Meals"}
+              </span>
+            ) : (
+              <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                {locale === "bn" ? "হিসাব সমান (Settled)" : "Settled"}
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* Card 3: Combined Net Payable */}
+        <div className="bg-gradient-to-br from-indigo-900 to-indigo-950 text-white rounded-2xl border border-indigo-800 p-4.5 shadow-md space-y-2">
+          <div className="flex items-center justify-between text-indigo-300 text-xs">
+            <span className="font-bold flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>{locale === "bn" ? "সম্মিলিত নেট প্রদেয়" : "Combined Net Payable"}</span>
             </span>
-            <p className="text-slate-300 text-[11px] leading-relaxed mt-0.5">
-              {isOwnerOrAdmin
+            <Layers className="w-4 h-4 text-indigo-300" />
+          </div>
+          <div className="text-2xl font-black text-white">
+            {activeDetails.isNetRefund ? (
+              <span className="text-emerald-400">+৳ {activeDetails.finalRefund.toLocaleString()} পাবে</span>
+            ) : (
+              <span>৳ {activeDetails.finalPayable.toLocaleString()}</span>
+            )}
+          </div>
+          <p className="text-[11px] text-indigo-200">
+            {locale === "bn"
+              ? "ভাড়া ও বাজার রিফান্ড সমন্বয় করার পর চূড়ান্ত হিসাব"
+              : "Reconciled total after applying bazar refund"}
+          </p>
+        </div>
+
+        {/* Card 4: Meal Rate */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4.5 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between text-slate-500 text-xs">
+            <span className="font-semibold">{locale === "bn" ? "বর্তমান মিল রেট" : "Current Meal Rate"}</span>
+            <Calculator className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div className="text-2xl font-black text-slate-900">
+            ৳ 54.50
+          </div>
+          <p className="text-[11px] text-slate-500">
+            {locale === "bn" ? "মোট বাজার ÷ মোট খাওয়া মিল" : "Total Bazar ÷ Total Meals"}
+          </p>
+        </div>
+      </div>
+
+      {/* VIEW MODE CONTROLLER & PRIVACY CARD */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+              {locale === "bn" ? "বিলের ভিউ মোড নির্বাচন করুন:" : "Select Bill Presentation Mode:"}
+            </span>
+            <h3 className="text-base font-bold text-slate-900 mt-0.5">
+              {globalViewMode === "COMBINED"
                 ? locale === "bn"
-                  ? "🛡️ অ্যাডমিন সুবিধা সক্রিয়: আপনি সকল সদস্যের বিল দেখতে পাচ্ছেন এবং প্রতিটি ইনভয়েসের পাশে 'বিল এডিট' বাটনে ক্লিক করে ভাড়া, ওয়াইফাই বা বুয়া বিল পরিবর্তন করতে পারবেন।"
-                  : "🛡️ Admin Controls Active: You can view and edit any resident's bill components using the 'Edit Bill' button on each invoice card."
+                  ? "⚡ কম্বাইন্ড মোড (ভাড়া ও বাজার হিসাব একত্রিত সমন্বয়)"
+                  : "⚡ Combined Mode (Rent & Meal Ledger Unified)"
+                : globalViewMode === "SEPARATE"
+                ? locale === "bn"
+                  ? "🔄 আলাদা আলাদা মোড (বাসা ভাড়া এবং মিল-বাজার সম্পূর্ণ আলাদা)"
+                  : "🔄 Separate Mode (Rent & Meal Ledger Side-by-Side)"
+                : globalViewMode === "RENT_ONLY"
+                ? locale === "bn"
+                  ? "🏠 শুধু বাসা ভাড়া ও ইউটিলিটি বিল"
+                  : "🏠 Room Rent & Utilities Only"
                 : locale === "bn"
-                ? `🔒 মেসের নিয়ম অনুযায়ী বাসা ভাড়া সম্পূর্ণ গোপন রাখা হয়। আপনি শুধুমাত্র আপনার নিজের (${currentMemberName}) বাসা ভাড়া ও রসিদ দেখতে পাচ্ছেন।`
-                : `🔒 Individual privacy guaranteed: You are only viewing your own (${currentMemberName}) bill. Other residents cannot view your rent.`}
-            </p>
+                ? "🍲 শুধু মিল ও ব্যক্তিগত বাজার ব্যালেন্স"
+                : "🍲 Meal & Personal Bazar Ledger Only"}
+            </h3>
+          </div>
+
+          {/* View Mode Buttons */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl self-start lg:self-auto">
+            <button
+              onClick={() => setGlobalViewMode("COMBINED")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                globalViewMode === "COMBINED"
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>{locale === "bn" ? "কম্বাইন্ড বিল (Combined)" : "Combined Bill"}</span>
+            </button>
+
+            <button
+              onClick={() => setGlobalViewMode("SEPARATE")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                globalViewMode === "SEPARATE"
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Split className="w-3.5 h-3.5" />
+              <span>{locale === "bn" ? "আলাদা আলাদা (Separate)" : "Separate Bills"}</span>
+            </button>
+
+            <button
+              onClick={() => setGlobalViewMode("RENT_ONLY")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                globalViewMode === "RENT_ONLY"
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>{locale === "bn" ? "শুধু বাসা ভাড়া" : "Rent Only"}</span>
+            </button>
+
+            <button
+              onClick={() => setGlobalViewMode("MEALS_ONLY")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                globalViewMode === "MEALS_ONLY"
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Utensils className="w-3.5 h-3.5" />
+              <span>{locale === "bn" ? "শুধু মিল-বাজার" : "Meals Only"}</span>
+            </button>
           </div>
         </div>
 
-        {/* Admin Filter Dropdown */}
-        {isOwnerOrAdmin && (
-          <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 self-start sm:self-auto">
-            <span className="text-[11px] text-slate-400">Filter Invoices:</span>
-            <select
-              value={adminMemberFilter}
-              onChange={(e) => setAdminMemberFilter(e.target.value)}
-              className="bg-transparent text-white font-bold text-xs outline-none cursor-pointer"
-            >
-              <option value="ALL" className="bg-slate-900 text-white">All Members (সকল সদস্য)</option>
-              <option value="Kamrul Islam" className="bg-slate-900 text-white">Kamrul Islam (101-A)</option>
-              <option value="Sakib Al Mahmud" className="bg-slate-900 text-white">Sakib Al Mahmud (101-B)</option>
-              <option value="Mehedi Hasan" className="bg-slate-900 text-white">Mehedi Hasan (102-A)</option>
-              <option value="Tanvir Hasan" className="bg-slate-900 text-white">Tanvir Hasan (102-B)</option>
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* Member Invoices Showcase */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-600" />
+        {/* Privacy Notice Strip */}
+        <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-slate-600">
+            <Lock className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
               {isOwnerOrAdmin
                 ? locale === "bn"
-                  ? "মেম্বারদের বাসা ভাড়া ও ইউটিলিটি ইনভয়েস"
-                  : "Resident Rent Invoices"
+                  ? "🛡️ এডমিন ভিউ: আপনি সকল সদস্যের বিল দেখতে ও এডিট করতে পারেন।"
+                  : "🛡️ Admin View: You can view and edit bills for all members."
                 : locale === "bn"
-                ? `আপনার মাসিক বাসা ভাড়া ও বিল (${currentMemberName})`
-                : `Your Personal Monthly Invoice (${currentMemberName})`}
+                ? `🔒 ব্যক্তিগত নিরাপত্তা: আপনি শুধুমাত্র আপনার নিজের (${currentMemberName}) বাসা ভাড়া ও হিসাব দেখতে পাচ্ছেন।`
+                : `🔒 Individual Privacy: You are only viewing your personal (${currentMemberName}) records.`}
             </span>
-          </h2>
-          <span className="text-xs text-slate-500 font-semibold">
-            {visibleInvoices.length} {visibleInvoices.length === 1 ? "Invoice" : "Invoices"}
-          </span>
-        </div>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {visibleInvoices.map((inv) => (
+          {/* Admin Member Filter */}
+          {isOwnerOrAdmin && (
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-xl border border-slate-200">
+              <span className="text-[11px] text-slate-500 font-semibold">Filter:</span>
+              <select
+                value={adminMemberFilter}
+                onChange={(e) => setAdminMemberFilter(e.target.value)}
+                className="bg-transparent font-bold text-slate-900 text-xs outline-none cursor-pointer"
+              >
+                <option value="ALL">All Members (সকল সদস্য)</option>
+                <option value="Kamrul Islam">Kamrul Islam (101-A)</option>
+                <option value="Sakib Al Mahmud">Sakib Al Mahmud (101-B)</option>
+                <option value="Mehedi Hasan">Mehedi Hasan (102-A)</option>
+                <option value="Tanvir Hasan">Tanvir Hasan (102-B)</option>
+                <option value="Rahim Ahmed">Rahim Ahmed (201-A)</option>
+              </select>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* MEMBER INVOICES & LEDGER SECTION */}
+      {/* ============================================================== */}
+      <div className="space-y-6">
+        {visibleInvoices.map((inv) => {
+          const details = getCombinedDetails(inv);
+          const effectiveMode =
+            cardOverrides[inv.id] ||
+            (globalViewMode === "RENT_ONLY" || globalViewMode === "MEALS_ONLY"
+              ? globalViewMode
+              : globalViewMode);
+
+          return (
             <div
               key={inv.id}
-              className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4 flex flex-col justify-between"
+              className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden transition"
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
+              {/* Card Header Bar */}
+              <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-sm">
+                    {inv.member.charAt(0)}
+                  </div>
                   <div>
-                    <span className="font-mono text-xs font-bold text-indigo-600">{inv.number}</span>
-                    <h3 className="font-bold text-slate-900 text-base">{inv.member}</h3>
-                    <p className="text-xs text-slate-500">{inv.room} • {inv.month}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        inv.status === "PAID"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-amber-100 text-amber-800"
-                      }`}
-                    >
-                      {inv.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="divide-y divide-slate-100 text-xs text-slate-700 pt-2">
-                  {inv.items.map((item, idx) => (
-                    <div key={idx} className="py-1.5 flex justify-between">
-                      <span className="text-slate-600">{item.name}</span>
-                      <span className="font-semibold text-slate-900">৳ {item.amount}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-200 space-y-3">
-                <div className="flex justify-between items-baseline text-xs">
-                  <span className="text-slate-500 font-medium">Total Bill:</span>
-                  <span className="text-lg font-black text-slate-900">৳ {inv.totalAmount}</span>
-                </div>
-
-                <div className="flex justify-between items-baseline text-xs text-slate-600">
-                  <span>Paid so far: ৳ {inv.paidAmount}</span>
-                  <span className="font-bold text-rose-600">
-                    {inv.dueAmount > 0 ? `Due: ৳ ${inv.dueAmount}` : "Paid in Full"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 pt-1">
-                  {inv.dueAmount > 0 ? (
-                    <button
-                      onClick={() => handlePayInvoice(inv)}
-                      className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-2 active:scale-95"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      <span>
-                        {locale === "bn" ? `পেমেন্ট করুন (৳ ${inv.dueAmount})` : `Pay ৳ ${inv.dueAmount}`}
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-extrabold text-slate-900 text-base">{inv.member}</h3>
+                      <span className="text-xs font-mono text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-lg">
+                        {inv.number}
                       </span>
-                    </button>
-                  ) : (
-                    <div className="flex-1 p-2 rounded-xl bg-emerald-50 text-emerald-800 text-center text-xs font-bold flex items-center justify-center gap-1.5">
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      <span>{locale === "bn" ? "ভাড়া পরিশোধিত" : "Paid in Full"}</span>
                     </div>
-                  )}
+                    <p className="text-xs text-slate-500 font-medium">
+                      {inv.room} • {inv.month}
+                    </p>
+                  </div>
+                </div>
 
-                  {/* BILL EDIT BUTTON (Available to Admin/Owner) */}
+                {/* Right controls on Card Header: 1-click Toggle & Edit */}
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                  {/* Local Mode Toggle Button */}
+                  <button
+                    onClick={() => toggleCardMode(inv.id, effectiveMode === "COMBINED" ? "COMBINED" : "SEPARATE")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-2xs transition"
+                    title="Toggle between separate bills and combined account"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>
+                      {effectiveMode === "COMBINED"
+                        ? locale === "bn"
+                          ? "আলাদা আলাদা দেখুন ➔"
+                          : "View Separately ➔"
+                        : locale === "bn"
+                        ? "কম্বাইন্ড করুন ➔"
+                        : "Combine Together ➔"}
+                    </span>
+                  </button>
+
+                  {/* Admin Edit Bill Button */}
                   {isOwnerOrAdmin && (
                     <button
                       onClick={() => handleOpenEditInvoice(inv)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-300 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold text-xs transition"
-                      title="Edit bill items, rent or discounts"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition"
                     >
-                      <Edit3 className="w-3.5 h-3.5 text-indigo-600" />
+                      <Edit3 className="w-3.5 h-3.5" />
                       <span>{locale === "bn" ? "বিল এডিট" : "Edit Bill"}</span>
                     </button>
                   )}
                 </div>
               </div>
+
+              {/* Card Body */}
+              <div className="p-6">
+                {/* -------------------------------------------------------- */}
+                {/* VIEW 1: COMBINED ACCOUNT (একত্রিত কম্বাইন্ড হিসাব) */}
+                {/* -------------------------------------------------------- */}
+                {(effectiveMode === "COMBINED" || globalViewMode === "COMBINED") &&
+                  effectiveMode !== "SEPARATE" &&
+                  effectiveMode !== "RENT_ONLY" &&
+                  effectiveMode !== "MEALS_ONLY" && (
+                    <div className="space-y-6">
+                      {/* Combined Net Banner */}
+                      <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex flex-col md:flex-row md:items-center justify-between gap-5 shadow-sm">
+                        <div className="space-y-1.5">
+                          <span className="text-indigo-300 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5">
+                            <Sparkles className="w-4 h-4 text-amber-400" />
+                            <span>
+                              {locale === "bn"
+                                ? "কম্বাইন্ড সমন্বিত হিসাব (Combined Net Settlement)"
+                                : "Combined Net Settlement"}
+                            </span>
+                          </span>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-3xl font-black">
+                              {details.isNetRefund ? (
+                                <span className="text-emerald-400">
+                                  +৳ {details.finalRefund.toLocaleString()} পাবে (Refund)
+                                </span>
+                              ) : (
+                                <span>৳ {details.finalPayable.toLocaleString()}</span>
+                              )}
+                            </span>
+                            <span className="text-xs text-slate-300">
+                              {details.isNetRefund
+                                ? locale === "bn"
+                                  ? "(মেস তহবিল থেকে মেম্বার টাকা ফেরত পাবে)"
+                                  : "(Net credit due to member)"
+                                : locale === "bn"
+                                ? "(ভাড়া ও মিল-বাজার সমন্বয় শেষে মোট দিতে হবে)"
+                                : "(Net amount payable after reconciliation)"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Payment Button */}
+                        <div className="flex items-center gap-2 self-start md:self-auto">
+                          {details.finalPayable > 0 ? (
+                            <button
+                              onClick={() => handlePayInvoice(inv, "COMBINED")}
+                              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition flex items-center gap-2 active:scale-95"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                              <span>
+                                {locale === "bn"
+                                  ? `সম্মিলিত ৳${details.finalPayable} পেমেন্ট করুন`
+                                  : `Pay Combined ৳${details.finalPayable}`}
+                              </span>
+                            </button>
+                          ) : (
+                            <div className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-bold flex items-center gap-1.5">
+                              <CheckCircle className="w-4 h-4 text-emerald-400" />
+                              <span>
+                                {locale === "bn" ? "কোনো বকেয়া নেই (সম্পূর্ণ পরিশোধিত)" : "Zero Due / Paid in Full"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Reconciliation Math Breakdown */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {/* Box A: Rent & Utilities Breakdown */}
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-200 text-xs">
+                            <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                              <FileText className="w-4 h-4 text-indigo-600" />
+                              <span>{locale === "bn" ? "১. বাসা ভাড়া ও ইউটিলিটি বিল" : "1. Rent & Utilities"}</span>
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                inv.status === "PAID"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-amber-100 text-amber-800"
+                              }`}
+                            >
+                              {inv.status}
+                            </span>
+                          </div>
+
+                          <div className="divide-y divide-slate-100 text-xs text-slate-700">
+                            {inv.items.map((item, idx) => (
+                              <div key={idx} className="py-1.5 flex justify-between">
+                                <span className="text-slate-600">{item.name}</span>
+                                <span className="font-semibold text-slate-900">৳ {item.amount}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-xs">
+                            <span className="font-semibold text-slate-600">ভাড়ার মোট বকেয়া (Rent Due):</span>
+                            <span className="font-extrabold text-slate-900">৳ {details.rentDue}</span>
+                          </div>
+                        </div>
+
+                        {/* Box B: Personal Meal & Bazar Breakdown */}
+                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-200 text-xs">
+                            <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                              <Utensils className="w-4 h-4 text-amber-600" />
+                              <span>{locale === "bn" ? "২. ব্যক্তিগত মিল ও বাজার ব্যালেন্স" : "2. Meal & Bazar Balance"}</span>
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-semibold">
+                              {details.mealAcc.totalMeals} meals @ ৳{details.mealAcc.mealRate}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 text-xs">
+                            <div className="flex justify-between text-slate-600">
+                              <span>খাবারের মোট খরচ (Total Meal Cost):</span>
+                              <span className="font-semibold text-slate-900">৳ {details.mealAcc.mealCost}</span>
+                            </div>
+
+                            <div className="flex justify-between text-slate-600">
+                              <span>মেসের বাজারে খরচ/জমা (Bazar Contributed):</span>
+                              <span className="font-semibold text-indigo-700 font-mono">৳ {details.mealAcc.totalBazarSpent}</span>
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+                              <span className="font-semibold text-slate-700">
+                                {locale === "bn" ? "বাজার থেকে পাবে বা দিবে:" : "Meal / Bazar Net:"}
+                              </span>
+                              {details.mealAcc.netMealBalance > 0 ? (
+                                <span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                                  +৳ {details.mealAcc.netMealBalance} পাবে (Refund)
+                                </span>
+                              ) : details.mealAcc.netMealBalance < 0 ? (
+                                <span className="font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded">
+                                  -৳ {Math.abs(details.mealAcc.netMealBalance)} দিবে (Due)
+                                </span>
+                              ) : (
+                                <span className="font-bold text-slate-600">৳ 0 (Settled)</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Explanation Pill */}
+                          <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600">
+                            {details.mealAcc.netMealBalance > 0 ? (
+                              <p className="text-emerald-800 font-medium">
+                                💡 এই সদস্য বাজারে ৳{details.mealAcc.totalBazarSpent} দিয়েছেন কিন্তু খেয়েছেন ৳{details.mealAcc.mealCost}। তাই ৳{details.mealRefund} টাকা ভাড়ার বকেয়া থেকে বাদ (সমন্বয়) হয়েছে।
+                              </p>
+                            ) : details.mealAcc.netMealBalance < 0 ? (
+                              <p className="text-rose-800 font-medium">
+                                💡 এই সদস্য মিল খেয়েছেন ৳{details.mealAcc.mealCost} কিন্তু বাজার করেছেন মাত্র ৳{details.mealAcc.totalBazarSpent}। তাই বাকি ৳{details.mealDue} টাকা ভাড়ার সাথে যোগ হয়েছে।
+                              </p>
+                            ) : (
+                              <p className="text-slate-600">
+                                💡 মিল খরচ ও বাজার জমার পরিমাণ সমান। কোনো সমন্বয় প্রয়োজন নেই।
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                {/* -------------------------------------------------------- */}
+                {/* VIEW 2: SEPARATE BILLS (আলাদা আলাদা বিল) */}
+                {/* -------------------------------------------------------- */}
+                {(effectiveMode === "SEPARATE" || globalViewMode === "SEPARATE") && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Separate Box 1: Room Rent & Utilities */}
+                    <div className="bg-slate-50/70 rounded-2xl border border-slate-200 p-5 space-y-4 flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                          <div>
+                            <span className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                              <FileText className="w-4 h-4 text-indigo-600" />
+                              <span>{locale === "bn" ? "বাসা ভাড়া ও ইউটিলিটি বিল" : "Room Rent & Utilities Bill"}</span>
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              {inv.room} • {inv.month}
+                            </span>
+                          </div>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                              inv.status === "PAID"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {inv.status}
+                          </span>
+                        </div>
+
+                        {/* Items */}
+                        <div className="divide-y divide-slate-100 text-xs text-slate-700">
+                          {inv.items.map((item, idx) => (
+                            <div key={idx} className="py-2 flex justify-between">
+                              <span className="text-slate-600">{item.name}</span>
+                              <span className="font-semibold text-slate-900">৳ {item.amount}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-200 space-y-3">
+                        <div className="flex justify-between items-baseline text-xs">
+                          <span className="text-slate-500 font-medium">মোট বাসা ভাড়া:</span>
+                          <span className="text-base font-black text-slate-900">৳ {inv.totalAmount}</span>
+                        </div>
+                        <div className="flex justify-between items-baseline text-xs text-slate-600">
+                          <span>পরিশোধিত: ৳ {inv.paidAmount}</span>
+                          <span className="font-bold text-rose-600">
+                            {inv.dueAmount > 0 ? `বকেয়া: ৳ ${inv.dueAmount}` : "সম্পূর্ণ পরিশোধিত"}
+                          </span>
+                        </div>
+
+                        {inv.dueAmount > 0 ? (
+                          <button
+                            onClick={() => handlePayInvoice(inv, "RENT")}
+                            className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-2"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            <span>{locale === "bn" ? `শুধু বাসা ভাড়া দিন (৳ ${inv.dueAmount})` : `Pay Rent (৳ ${inv.dueAmount})`}</span>
+                          </button>
+                        ) : (
+                          <div className="p-2 rounded-xl bg-emerald-100/60 text-emerald-800 text-center text-xs font-bold flex items-center justify-center gap-1.5">
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            <span>{locale === "bn" ? "ভাড়া পরিশোধিত" : "Rent Paid in Full"}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Separate Box 2: Personal Meal & Bazar Ledger */}
+                    <div className="bg-slate-50/70 rounded-2xl border border-slate-200 p-5 space-y-4 flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                          <div>
+                            <span className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                              <Utensils className="w-4 h-4 text-amber-600" />
+                              <span>{locale === "bn" ? "ব্যক্তিগত মিল ও বাজার হিসাব" : "Meal & Bazar Ledger"}</span>
+                            </span>
+                            <span className="text-[11px] text-slate-500">
+                              {details.mealAcc.totalMeals} টি মিল • রেট ৳ {details.mealAcc.mealRate}
+                            </span>
+                          </div>
+
+                          {details.mealAcc.netMealBalance > 0 ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                              পাবে (Refund)
+                            </span>
+                          ) : details.mealAcc.netMealBalance < 0 ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800">
+                              দিবে (Due)
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800">
+                              সমান
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Breakdown */}
+                        <div className="space-y-2.5 text-xs text-slate-700 pt-1">
+                          <div className="p-2.5 rounded-xl bg-white border border-slate-200 flex justify-between items-center">
+                            <span className="text-slate-600">মোট খাওয়ার মিল (Meals Eaten):</span>
+                            <span className="font-extrabold text-slate-900">{details.mealAcc.totalMeals} টি</span>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-white border border-slate-200 flex justify-between items-center">
+                            <span className="text-slate-600">খাবারের মোট খরচ ({details.mealAcc.totalMeals} × ৳{details.mealAcc.mealRate}):</span>
+                            <span className="font-extrabold text-slate-900">৳ {details.mealAcc.mealCost}</span>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-white border border-slate-200 flex justify-between items-center">
+                            <span className="text-slate-600">মেসের বাজারে জমা/খরচ (Bazar Spent):</span>
+                            <span className="font-extrabold text-indigo-700">৳ {details.mealAcc.totalBazarSpent}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom Result Box */}
+                      <div className="pt-3 border-t border-slate-200 space-y-3">
+                        <div className="p-3 rounded-xl bg-white border border-slate-200 flex justify-between items-center">
+                          <span className="font-bold text-xs text-slate-700">বাজার হিসাব ফলাফল:</span>
+                          {details.mealAcc.netMealBalance > 0 ? (
+                            <span className="text-base font-black text-emerald-600 flex items-center gap-1">
+                              <TrendingUp className="w-4 h-4" />
+                              +৳ {details.mealAcc.netMealBalance} পাবে
+                            </span>
+                          ) : details.mealAcc.netMealBalance < 0 ? (
+                            <span className="text-base font-black text-rose-600 flex items-center gap-1">
+                              <TrendingDown className="w-4 h-4" />
+                              -৳ {Math.abs(details.mealAcc.netMealBalance)} দিবে
+                            </span>
+                          ) : (
+                            <span className="text-base font-bold text-slate-700">৳ 0 পরিশোধিত</span>
+                          )}
+                        </div>
+
+                        {details.mealDue > 0 ? (
+                          <button
+                            onClick={() => handlePayInvoice(inv, "MEALS")}
+                            className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-2"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            <span>{locale === "bn" ? `মিল বাবদ বাকি দিন (৳ ${details.mealDue})` : `Pay Meal Due (৳ ${details.mealDue})`}</span>
+                          </button>
+                        ) : details.mealRefund > 0 ? (
+                          <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-800 text-center text-xs font-bold">
+                            🎉 মেস ম্যানেজার থেকে ৳ {details.mealRefund} নগদ বা বিকাশে রিফান্ড পাবেন
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700 text-center text-xs font-bold">
+                            হিসাব সম্পূর্ণ পরিশোধিত
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* -------------------------------------------------------- */}
+                {/* VIEW 3: RENT ONLY (শুধু বাসা ভাড়া) */}
+                {/* -------------------------------------------------------- */}
+                {effectiveMode === "RENT_ONLY" && (
+                  <div className="space-y-4">
+                    <div className="divide-y divide-slate-100 text-xs text-slate-700">
+                      {inv.items.map((item, idx) => (
+                        <div key={idx} className="py-2.5 flex justify-between">
+                          <span className="text-slate-600">{item.name}</span>
+                          <span className="font-semibold text-slate-900">৳ {item.amount}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="text-xs text-slate-500 font-medium">ভাড়ার মোট বকেয়া:</span>
+                        <div className="text-xl font-black text-rose-600">৳ {inv.dueAmount}</div>
+                      </div>
+                      {inv.dueAmount > 0 && (
+                        <button
+                          onClick={() => handlePayInvoice(inv, "RENT")}
+                          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition"
+                        >
+                          ভাড়া পরিশোধ করুন (৳ {inv.dueAmount})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* -------------------------------------------------------- */}
+                {/* VIEW 4: MEALS ONLY (শুধু মিল-বাজার) */}
+                {/* -------------------------------------------------------- */}
+                {effectiveMode === "MEALS_ONLY" && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <span className="text-slate-500 block">মোট মিল:</span>
+                        <span className="font-bold text-base text-slate-900">{details.mealAcc.totalMeals} টি</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <span className="text-slate-500 block">মিল রেট:</span>
+                        <span className="font-bold text-base text-slate-900">৳ {details.mealAcc.mealRate}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <span className="text-slate-500 block">খাবারের মোট খরচ:</span>
+                        <span className="font-bold text-base text-slate-900">৳ {details.mealAcc.mealCost}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <span className="text-slate-500 block">বাজারে জমা/খরচ:</span>
+                        <span className="font-bold text-base text-indigo-700">৳ {details.mealAcc.totalBazarSpent}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-indigo-900">বাজার ব্যালেন্স স্ট্যাটাস:</span>
+                        <p className="text-[11px] text-slate-600">বাজার খরচ থেকে মোট খাওয়ার খরচ বাদ দিয়ে হিসাব</p>
+                      </div>
+                      <span className="text-lg font-black">
+                        {details.mealAcc.netMealBalance > 0 ? (
+                          <span className="text-emerald-700">+৳ {details.mealAcc.netMealBalance} পাবে (Refund)</span>
+                        ) : details.mealAcc.netMealBalance < 0 ? (
+                          <span className="text-rose-700">-৳ {Math.abs(details.mealAcc.netMealBalance)} দিবে (Due)</span>
+                        ) : (
+                          <span className="text-slate-700">৳ 0 সমান</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Payment History / Ledger Trail (Filtered by Member) */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+      {/* ============================================================== */}
+      {/* PAYMENT HISTORY / LEDGER TRAIL */}
+      {/* ============================================================== */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-6 space-y-4">
         <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
           <Receipt className="w-4 h-4 text-indigo-600" />
           <span>
             {isOwnerOrAdmin
               ? locale === "bn"
-                ? "সকল মেম্বারদের পেমেন্ট লেজার"
-                : "Master Rent Payment Ledger"
+                ? "সকল মেম্বারদের পেমেন্ট ও বাজার লেনদেন হিস্টোরি"
+                : "Master Rent & Bazar Transaction Ledger"
               : locale === "bn"
               ? "আপনার ব্যক্তিগত জমার রসিদ ও লেজার"
-              : "Your Personal Payment History"}
+              : "Your Personal Transaction History"}
           </span>
         </h3>
 
@@ -689,7 +1398,12 @@ export default function FinancePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-base">Quick Digital Pay</h3>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Quick Digital Pay</h3>
+                <p className="text-xs text-slate-500">
+                  {selectedInvoice?.number} ({selectedInvoice?.member})
+                </p>
+              </div>
               <button
                 onClick={() => setPaymentModalOpen(false)}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
@@ -699,14 +1413,46 @@ export default function FinancePage() {
             </div>
 
             <form onSubmit={submitPayment} className="space-y-3.5 text-xs">
+              {/* Payment Purpose Selector */}
               <div>
-                <label className="block text-slate-600 font-semibold mb-1">Paying for Invoice</label>
-                <input
-                  type="text"
-                  disabled
-                  value={`${selectedInvoice?.number} (${selectedInvoice?.member})`}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 font-medium text-slate-800"
-                />
+                <label className="block text-slate-700 font-semibold mb-1">
+                  পেমেন্টের খাত নির্বাচন করুন (Payment Purpose):
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePurposeChange("COMBINED")}
+                    className={`py-2 px-1 rounded-xl font-bold text-[11px] transition text-center ${
+                      payPurpose === "COMBINED"
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    কম্বাইন্ড বিল
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePurposeChange("RENT")}
+                    className={`py-2 px-1 rounded-xl font-bold text-[11px] transition text-center ${
+                      payPurpose === "RENT"
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    শুধু বাসা ভাড়া
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePurposeChange("MEALS")}
+                    className={`py-2 px-1 rounded-xl font-bold text-[11px] transition text-center ${
+                      payPurpose === "MEALS"
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    শুধু মিলের বাকি
+                  </button>
+                </div>
               </div>
 
               <div>
